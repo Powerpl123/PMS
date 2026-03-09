@@ -1,5 +1,4 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { useAuth } from './AuthContext';
 
 const mainLinks = [
   { to: '/', label: 'Dashboard', icon: '⚡' },
@@ -18,10 +17,6 @@ const analyticsLinks = [
   { to: '/reports', label: 'Reports', icon: '📊' },
 ];
 
-const adminLinks = [
-  { to: '/users', label: 'User Management', icon: '👥' },
-];
-
 function NavSection({ title, links }) {
   return (
     <>
@@ -36,8 +31,6 @@ function NavSection({ title, links }) {
 }
 
 export default function Layout() {
-  const { user, logout, isAdmin, isManager } = useAuth();
-
   return (
     <div className="app">
       <nav className="sidebar">
@@ -52,17 +45,12 @@ export default function Layout() {
           <NavSection title="Overview" links={mainLinks} />
           <NavSection title="Operations" links={operationLinks} />
           <NavSection title="Analytics" links={analyticsLinks} />
-          {(isAdmin || isManager) && <NavSection title="Administration" links={adminLinks} />}
         </div>
         <div className="sidebar-footer">
-          <div className="user-info">
-            <span className="user-avatar">{user?.name?.charAt(0).toUpperCase()}</span>
-            <div className="user-details">
-              <span className="user-name">{user?.name}</span>
-              <span className="user-role">{user?.role}</span>
-            </div>
+          <div className="status">
+            <span className="status-dot"></span>
+            System Online
           </div>
-          <button className="logout-btn" onClick={logout} title="Logout">⏻</button>
         </div>
       </nav>
       <main className="main">

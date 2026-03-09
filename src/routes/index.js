@@ -1,6 +1,5 @@
 import { Router } from "express";
 import assetsRoutes from "./assets.js";
-import authRoutes from "./auth.js";
 import inventoryRoutes from "./inventory.js";
 import predictiveRoutes from "./predictive.js";
 import reportsRoutes from "./reports.js";
@@ -13,7 +12,6 @@ router.get("/health", (req, res) => {
   res.json({ success: true, message: "PMS API is healthy" });
 });
 
-router.use("/auth", authRoutes);
 router.use("/assets", assetsRoutes);
 router.use("/work-orders", workOrdersRoutes);
 router.use("/inventory", inventoryRoutes);
