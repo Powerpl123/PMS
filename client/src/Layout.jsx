@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
 
 const mainLinks = [
   { to: '/', label: 'Dashboard', icon: '⚡' },
@@ -31,6 +32,8 @@ function NavSection({ title, links }) {
 }
 
 export default function Layout() {
+  const { user, signOut } = useAuth();
+
   return (
     <div className="app">
       <nav className="sidebar">
@@ -47,6 +50,22 @@ export default function Layout() {
           <NavSection title="Analytics" links={analyticsLinks} />
         </div>
         <div className="sidebar-footer">
+          {user && (
+            <div className="sidebar-user">
+              <img
+                src={user.user_metadata?.avatar_url || ''}
+                alt=""
+                className="user-avatar"
+                referrerPolicy="no-referrer"
+              />
+              <span className="user-name">
+                {user.user_metadata?.full_name || user.email}
+              </span>
+            </div>
+          )}
+          <button className="sign-out-btn" onClick={signOut}>
+            Sign Out
+          </button>
           <div className="status">
             <span className="status-dot"></span>
             System Online

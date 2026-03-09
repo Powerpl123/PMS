@@ -1,5 +1,8 @@
 import { Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './Layout'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Assets from './pages/Assets'
 import WorkOrders from './pages/WorkOrders'
@@ -11,17 +14,26 @@ import ControlPanel from './pages/ControlPanel'
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/control-panel" element={<ControlPanel />} />
-        <Route path="/assets" element={<Assets />} />
-        <Route path="/work-orders" element={<WorkOrders />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/vendors" element={<Vendors />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/predictive" element={<Predictive />} />
-      </Route>
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/control-panel" element={<ControlPanel />} />
+          <Route path="/assets" element={<Assets />} />
+          <Route path="/work-orders" element={<WorkOrders />} />
+          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/vendors" element={<Vendors />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/predictive" element={<Predictive />} />
+        </Route>
+      </Routes>
+    </AuthProvider>
   )
 }
