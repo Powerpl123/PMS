@@ -212,8 +212,8 @@ export default function ControlPanel() {
   const loadData = useCallback(async () => {
     try {
       const [assetsRes, ordersRes] = await Promise.all([
-        api.get('/assets?limit=100'),
-        api.get('/work-orders?limit=100'),
+        api.assets.list(100),
+        api.workOrders.list(100),
       ]);
 
       const assets = assetsRes.data;
@@ -229,7 +229,7 @@ export default function ControlPanel() {
 
       /* build equipment status from real assets */
       setEquipStatus(assets.slice(0, 12).map(a => ({
-        id: a._id,
+        id: a.id,
         name: a.name,
         category: a.category,
         location: a.location,
@@ -245,7 +245,7 @@ export default function ControlPanel() {
         })
         .slice(0, 8)
         .map(o => ({
-          id: o._id,
+          id: o.id,
           message: o.title,
           severity: o.priority === 'critical' ? 'critical' : o.priority === 'high' ? 'warning' : 'info',
           asset: o.assetId?.name || 'Unknown',

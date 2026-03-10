@@ -12,7 +12,7 @@ export default function Assets() {
   const [modal, setModal] = useState(null); // null | 'new' | item obj
   const [form, setForm] = useState(empty);
 
-  const load = () => api.get('/assets?limit=100').then(r => { setItems(r.data); setLoading(false); });
+  const load = () => api.assets.list(100).then(r => { setItems(r.data); setLoading(false); }).catch(() => { setItems([]); setLoading(false); });
 
   useEffect(() => { load(); }, []);
 
@@ -20,14 +20,14 @@ export default function Assets() {
   function openEdit(item) { setForm({ name: item.name, serialNumber: item.serialNumber || '', category: item.category, location: item.location, status: item.status, purchaseCost: item.purchaseCost || '', usefulLifeYears: item.usefulLifeYears || '', notes: item.notes || '' }); setModal(item); }
 
   async function save() {
-    if (modal === 'new') await api.post('/assets', form);
-    else await api.put(`/assets/${modal._id}`, form);
+    if (modal === 'new') await api.assets.create(form);
+    else await api.assets.update(modal.id, form);
     setModal(null); load();
   }
 
   async function remove(id) {
     if (!confirm('Delete this asset?')) return;
-    await api.del(`/assets/${id}`); load();
+    await api.assets.remove(id); load();
   }
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
@@ -45,7 +45,7 @@ export default function Assets() {
           <thead><tr><th>Name</th><th>Category</th><th>Location</th><th>Status</th><th>Cost</th><th>Actions</th></tr></thead>
           <tbody>
             {items.map(a => (
-              <tr key={a._id}>
+              <tr key={a.id}>
                 <td><strong>{a.name}</strong><br/><small style={{color:'var(--text-muted)'}}>{a.serialNumber}</small></td>
                 <td>{a.category}</td>
                 <td>{a.location}</td>
@@ -53,7 +53,7 @@ export default function Assets() {
                 <td>${Number(a.purchaseCost || 0).toLocaleString()}</td>
                 <td>
                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(a)}>Edit</button>{' '}
-                  <button className="btn btn-danger btn-sm" onClick={() => remove(a._id)}>Delete</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => remove(a.id)}>Delete</button>
                 </td>
               </tr>
             ))}

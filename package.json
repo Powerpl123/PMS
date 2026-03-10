@@ -1,35 +1,19 @@
 {
   "name": "pms-predictive-maintenance-system",
   "version": "1.0.0",
-  "description": "Predictive Maintenance System backend API",
-  "main": "src/server.js",
+  "description": "Predictive Maintenance System – Supabase + Vite/React",
   "type": "module",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
-    "build": "cd client && npm install && npm run build",
-    "seed": "node scripts/seed.js",
-    "check": "node --check src/server.js"
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm install && npm run build"
   },
   "keywords": [
     "maintenance",
     "predictive-maintenance",
-    "express",
-    "mongodb"
+    "supabase",
+    "vite",
+    "react"
   ],
   "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "helmet": "^7.1.0",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^8.5.0",
-    "morgan": "^1.10.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.4"
-  }
+  "license": "MIT"
 }

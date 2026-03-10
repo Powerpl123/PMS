@@ -9,7 +9,7 @@ export default function Vendors() {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(empty);
 
-  const load = () => api.get('/vendors?limit=100').then(r => { setItems(r.data); setLoading(false); });
+  const load = () => api.vendors.list(100).then(r => { setItems(r.data); setLoading(false); }).catch(() => { setItems([]); setLoading(false); });
   useEffect(() => { load(); }, []);
 
   function openNew() { setForm(empty); setModal('new'); }
@@ -19,12 +19,12 @@ export default function Vendors() {
   }
 
   async function save() {
-    if (modal === 'new') await api.post('/vendors', form);
-    else await api.put(`/vendors/${modal._id}`, form);
+    if (modal === 'new') await api.vendors.create(form);
+    else await api.vendors.update(modal.id, form);
     setModal(null); load();
   }
 
-  async function remove(id) { if (!confirm('Delete?')) return; await api.del(`/vendors/${id}`); load(); }
+  async function remove(id) { if (!confirm('Delete?')) return; await api.vendors.remove(id); load(); }
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
   function renderStars(rating) {
@@ -44,7 +44,7 @@ export default function Vendors() {
           <thead><tr><th>Name</th><th>Contact</th><th>Email</th><th>Phone</th><th>Rating</th><th>Actions</th></tr></thead>
           <tbody>
             {items.map(v => (
-              <tr key={v._id}>
+              <tr key={v.id}>
                 <td><strong>{v.name}</strong></td>
                 <td>{v.contactName || '—'}</td>
                 <td>{v.email || '—'}</td>
@@ -52,7 +52,7 @@ export default function Vendors() {
                 <td style={{ color: '#f59e0b' }}>{renderStars(v.rating)}</td>
                 <td>
                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(v)}>Edit</button>{' '}
-                  <button className="btn btn-danger btn-sm" onClick={() => remove(v._id)}>Delete</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => remove(v.id)}>Delete</button>
                 </td>
               </tr>
             ))}

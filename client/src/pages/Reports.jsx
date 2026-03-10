@@ -9,7 +9,7 @@ export default function Reports() {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(empty);
 
-  const load = () => api.get('/reports?limit=100').then(r => { setItems(r.data); setLoading(false); });
+  const load = () => api.reports.list(100).then(r => { setItems(r.data); setLoading(false); }).catch(() => { setItems([]); setLoading(false); });
   useEffect(() => { load(); }, []);
 
   function openNew() { setForm(empty); setModal('new'); }
@@ -19,12 +19,12 @@ export default function Reports() {
   }
 
   async function save() {
-    if (modal === 'new') await api.post('/reports', form);
-    else await api.put(`/reports/${modal._id}`, form);
+    if (modal === 'new') await api.reports.create(form);
+    else await api.reports.update(modal.id, form);
     setModal(null); load();
   }
 
-  async function remove(id) { if (!confirm('Delete?')) return; await api.del(`/reports/${id}`); load(); }
+  async function remove(id) { if (!confirm('Delete?')) return; await api.reports.remove(id); load(); }
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
   function fmtDate(d) { return d ? new Date(d).toLocaleDateString() : '—'; }
@@ -42,7 +42,7 @@ export default function Reports() {
           <thead><tr><th>Period</th><th>Work Orders</th><th>Completed</th><th>Labor Hrs</th><th>Downtime Hrs</th><th>Cost</th><th>Actions</th></tr></thead>
           <tbody>
             {items.map(r => (
-              <tr key={r._id}>
+              <tr key={r.id}>
                 <td>{fmtDate(r.periodStart)} — {fmtDate(r.periodEnd)}</td>
                 <td>{r.totalWorkOrders}</td>
                 <td>{r.completedWorkOrders}</td>
@@ -51,7 +51,7 @@ export default function Reports() {
                 <td>${Number(r.totalMaintenanceCost || 0).toLocaleString()}</td>
                 <td>
                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(r)}>Edit</button>{' '}
-                  <button className="btn btn-danger btn-sm" onClick={() => remove(r._id)}>Delete</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => remove(r.id)}>Delete</button>
                 </td>
               </tr>
             ))}

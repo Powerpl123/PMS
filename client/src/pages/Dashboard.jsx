@@ -7,18 +7,22 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function load() {
-      const [assets, orders, inventory, vendors] = await Promise.all([
-        api.get('/assets?limit=1'),
-        api.get('/work-orders?limit=1'),
-        api.get('/inventory?limit=1'),
-        api.get('/vendors?limit=1'),
-      ]);
-      setStats({
-        assets: assets.pagination.total,
-        workOrders: orders.pagination.total,
-        inventory: inventory.pagination.total,
-        vendors: vendors.pagination.total,
-      });
+      try {
+        const [assets, orders, inventory, vendors] = await Promise.all([
+          api.assets.list(1).catch(() => ({ total: 0 })),
+          api.workOrders.list(1).catch(() => ({ total: 0 })),
+          api.inventory.list(1).catch(() => ({ total: 0 })),
+          api.vendors.list(1).catch(() => ({ total: 0 })),
+        ]);
+        setStats({
+          assets: assets.total,
+          workOrders: orders.total,
+          inventory: inventory.total,
+          vendors: vendors.total,
+        });
+      } catch {
+        setStats({ assets: 0, workOrders: 0, inventory: 0, vendors: 0 });
+      }
     }
     load();
   }, []);

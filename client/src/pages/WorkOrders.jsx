@@ -13,27 +13,27 @@ export default function WorkOrders() {
   const [form, setForm] = useState(empty);
 
   const load = () => Promise.all([
-    api.get('/work-orders?limit=100'),
-    api.get('/assets?limit=100'),
+    api.workOrders.list(100).catch(() => ({ data: [] })),
+    api.assets.list(100).catch(() => ({ data: [] })),
   ]).then(([wo, a]) => { setItems(wo.data); setAssets(a.data); setLoading(false); });
 
   useEffect(() => { load(); }, []);
 
   function openNew() { setForm(empty); setModal('new'); }
   function openEdit(item) {
-    setForm({ title: item.title, description: item.description || '', assetId: item.assetId?._id || item.assetId || '', assignedTo: item.assignedTo || '', priority: item.priority, status: item.status, dueDate: item.dueDate ? item.dueDate.slice(0,10) : '', laborHours: item.laborHours || '', estimatedCost: item.estimatedCost || '' });
+    setForm({ title: item.title, description: item.description || '', assetId: item.assetId?.id || item.assetId || '', assignedTo: item.assignedTo || '', priority: item.priority, status: item.status, dueDate: item.dueDate ? item.dueDate.slice(0,10) : '', laborHours: item.laborHours || '', estimatedCost: item.estimatedCost || '' });
     setModal(item);
   }
 
   async function save() {
     const body = { ...form };
     if (body.dueDate) body.dueDate = new Date(body.dueDate).toISOString();
-    if (modal === 'new') await api.post('/work-orders', body);
-    else await api.put(`/work-orders/${modal._id}`, body);
+    if (modal === 'new') await api.workOrders.create(body);
+    else await api.workOrders.update(modal.id, body);
     setModal(null); load();
   }
 
-  async function remove(id) { if (!confirm('Delete?')) return; await api.del(`/work-orders/${id}`); load(); }
+  async function remove(id) { if (!confirm('Delete?')) return; await api.workOrders.remove(id); load(); }
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
   return (
@@ -49,7 +49,7 @@ export default function WorkOrders() {
           <thead><tr><th>Title</th><th>Asset</th><th>Assigned To</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {items.map(w => (
-              <tr key={w._id}>
+              <tr key={w.id}>
                 <td><strong>{w.title}</strong></td>
                 <td>{w.assetId?.name || '—'}</td>
                 <td>{w.assignedTo || '—'}</td>
@@ -57,7 +57,7 @@ export default function WorkOrders() {
                 <td><span className={`badge ${statusBadge[w.status]}`}>{w.status}</span></td>
                 <td>
                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(w)}>Edit</button>{' '}
-                  <button className="btn btn-danger btn-sm" onClick={() => remove(w._id)}>Delete</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => remove(w.id)}>Delete</button>
                 </td>
               </tr>
             ))}
@@ -72,7 +72,7 @@ export default function WorkOrders() {
             <div className="form-group"><label>Asset *</label>
               <select value={form.assetId} onChange={e => set('assetId', e.target.value)}>
                 <option value="">Select asset...</option>
-                {assets.map(a => <option key={a._id} value={a._id}>{a.name}</option>)}
+                {assets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
             <div className="form-row">

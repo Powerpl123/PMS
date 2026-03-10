@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../api';
+import { analyzeAssetReadings } from '../utils/predictive';
 
 export default function Predictive() {
   const [readings, setReadings] = useState('58.2, 60.1, 62.9, 63.4, 70.8');
@@ -8,17 +8,17 @@ export default function Predictive() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  async function analyze() {
+  function analyze() {
     setLoading(true);
     setResult(null);
     try {
       const parsed = readings.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
-      const res = await api.post('/predictive/analyze', {
+      const res = analyzeAssetReadings({
         readings: parsed,
         recentFailures: Number(failures),
         ageYears: Number(age),
       });
-      setResult(res.data);
+      setResult(res);
     } catch (err) {
       alert(err.message);
     }

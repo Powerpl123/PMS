@@ -9,7 +9,7 @@ export default function Inventory() {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(empty);
 
-  const load = () => api.get('/inventory?limit=100').then(r => { setItems(r.data); setLoading(false); });
+  const load = () => api.inventory.list(100).then(r => { setItems(r.data); setLoading(false); }).catch(() => { setItems([]); setLoading(false); });
   useEffect(() => { load(); }, []);
 
   function openNew() { setForm(empty); setModal('new'); }
@@ -19,12 +19,12 @@ export default function Inventory() {
   }
 
   async function save() {
-    if (modal === 'new') await api.post('/inventory', form);
-    else await api.put(`/inventory/${modal._id}`, form);
+    if (modal === 'new') await api.inventory.create(form);
+    else await api.inventory.update(modal.id, form);
     setModal(null); load();
   }
 
-  async function remove(id) { if (!confirm('Delete?')) return; await api.del(`/inventory/${id}`); load(); }
+  async function remove(id) { if (!confirm('Delete?')) return; await api.inventory.remove(id); load(); }
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
   return (
@@ -40,16 +40,16 @@ export default function Inventory() {
           <thead><tr><th>Name</th><th>SKU</th><th>In Stock</th><th>Reorder Point</th><th>Unit Cost</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {items.map(i => (
-              <tr key={i._id}>
+              <tr key={i.id}>
                 <td><strong>{i.name}</strong></td>
                 <td><code>{i.sku}</code></td>
                 <td>{i.quantityInStock} {i.unit}</td>
                 <td>{i.reorderPoint}</td>
                 <td>${Number(i.unitCost || 0).toLocaleString()}</td>
-                <td>{i.needsReorder ? <span className="badge badge-red">Low Stock</span> : <span className="badge badge-green">OK</span>}</td>
+                <td>{(i.quantityInStock <= i.reorderPoint) ? <span className="badge badge-red">Low Stock</span> : <span className="badge badge-green">OK</span>}</td>
                 <td>
                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(i)}>Edit</button>{' '}
-                  <button className="btn btn-danger btn-sm" onClick={() => remove(i._id)}>Delete</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => remove(i.id)}>Delete</button>
                 </td>
               </tr>
             ))}
