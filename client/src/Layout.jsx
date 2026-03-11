@@ -1,11 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import NotificationBell from './components/NotificationBell';
 
 const mainLinks = [
   { to: '/', label: 'Dashboard', icon: '⚡' },
   { to: '/control-panel', label: 'Control Panel', icon: '🖥️' },
   { to: '/assets', label: 'Plant Assets', icon: '🏗️' },
   { to: '/work-orders', label: 'Work Orders', icon: '🔧' },
+  { to: '/work-requests', label: 'Work Requests', icon: '📋' },
 ];
 
 const operationLinks = [
@@ -16,6 +18,10 @@ const operationLinks = [
 const analyticsLinks = [
   { to: '/predictive', label: 'Failure Prediction', icon: '🧠' },
   { to: '/reports', label: 'Reports', icon: '📊' },
+];
+
+const adminLinks = [
+  { to: '/users', label: 'User Management', icon: '👥' },
 ];
 
 function NavSection({ title, links }) {
@@ -48,10 +54,12 @@ export default function Layout() {
           <NavSection title="Overview" links={mainLinks} />
           <NavSection title="Operations" links={operationLinks} />
           <NavSection title="Analytics" links={analyticsLinks} />
+          <NavSection title="Administration" links={adminLinks} />
         </div>
         <div className="sidebar-footer">
           {user && (
             <div className="sidebar-user">
+              <NotificationBell />
               <img
                 src={user.user_metadata?.avatar_url || ''}
                 alt=""

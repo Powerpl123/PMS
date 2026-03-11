@@ -12,7 +12,7 @@ export default function Assets() {
   const [modal, setModal] = useState(null); // null | 'new' | item obj
   const [form, setForm] = useState(empty);
 
-  const load = () => api.assets.list(100).then(r => { setItems(r.data); setLoading(false); }).catch(() => { setItems([]); setLoading(false); });
+  const load = () => api.assets.list(1000).then(r => { setItems(r.data); setLoading(false); }).catch(() => { setItems([]); setLoading(false); });
 
   useEffect(() => { load(); }, []);
 

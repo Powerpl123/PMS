@@ -6,6 +6,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     // Get the current session on mount
@@ -18,11 +19,47 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
+        if (!session) setProfile(null);
       }
     );
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Auto-sync profile when user is logged in
+  useEffect(() => {
+    if (!session?.user) { setProfile(null); return; }
+    const u = session.user;
+    (async () => {
+      try {
+        // Look up profile by email
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', u.email)
+          .maybeSingle();
+
+        if (existing) {
+          setProfile(existing);
+        } else {
+          // Auto-create profile for first-time login
+          const { data: created } = await supabase
+            .from('profiles')
+            .insert({
+              full_name: u.user_metadata?.full_name || u.email,
+              email: u.email,
+              role: 'admin',
+              active: true,
+            })
+            .select()
+            .single();
+          setProfile(created);
+        }
+      } catch {
+        // profiles table may not exist yet
+      }
+    })();
+  }, [session]);
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -58,6 +95,7 @@ export function AuthProvider({ children }) {
   const value = {
     session,
     user: session?.user ?? null,
+    profile,
     loading,
     signInWithGoogle,
     signInWithEmail,

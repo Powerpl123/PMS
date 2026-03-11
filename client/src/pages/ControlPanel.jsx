@@ -13,8 +13,8 @@ function simGauge(base, drift) {
 
 /* Default unit configurations */
 const DEFAULT_UNITS = [
-  { id: 1, name: 'Unit 1', capacity: 660, online: true, loadSetpoint: 620 },
-  { id: 2, name: 'Unit 2', capacity: 660, online: false, loadSetpoint: 0 },
+  { id: 1, name: 'Unit 1', capacity: 35, online: true, loadSetpoint: 35 },
+  { id: 2, name: 'Unit 2', capacity: 35, online: true, loadSetpoint: 35 },
 ];
 
 /* simulated live parameters based on config */
@@ -212,7 +212,7 @@ export default function ControlPanel() {
   const loadData = useCallback(async () => {
     try {
       const [assetsRes, ordersRes] = await Promise.all([
-        api.assets.list(100),
+        api.assets.list(1000),
         api.workOrders.list(100),
       ]);
 
@@ -228,12 +228,13 @@ export default function ControlPanel() {
       setPlantStats({ total: assets.length, active, maint, openOrders, critOrders, inProgress });
 
       /* build equipment status from real assets */
-      setEquipStatus(assets.slice(0, 12).map(a => ({
+      setEquipStatus(assets.map(a => ({
         id: a.id,
         name: a.name,
-        category: a.category,
-        location: a.location,
+        category: a.category || '—',
+        location: a.location || '—',
         status: a.status,
+        serialNumber: a.serialNumber || '',
       })));
 
       /* build alarms from critical/high work orders */
@@ -243,11 +244,11 @@ export default function ControlPanel() {
           const p = { critical: 0, high: 1, medium: 2, low: 3 };
           return (p[a.priority] ?? 4) - (p[b.priority] ?? 4);
         })
-        .slice(0, 8)
         .map(o => ({
           id: o.id,
           message: o.title,
           severity: o.priority === 'critical' ? 'critical' : o.priority === 'high' ? 'warning' : 'info',
+          priority: o.priority,
           asset: o.assetId?.name || 'Unknown',
           time: o.createdAt,
           status: o.status,
@@ -360,26 +361,56 @@ export default function ControlPanel() {
             <h3>🚨 Active Alerts</h3>
             <Link to="/work-orders" className="btn btn-sm btn-secondary">View All</Link>
           </div>
-          {alarms.length === 0 ? (
-            <div className="empty" style={{ padding: '1.5rem' }}>No active alerts</div>
-          ) : (
-            <div className="cp-alarm-list">
-              {alarms.map(a => (
-                <div key={a.id} className="cp-alarm-item" style={{ borderLeftColor: severityColor(a.severity) }}>
-                  <div className="cp-alarm-main">
-                    <span className={`badge ${severityBadge(a.severity)}`} style={{ marginRight: '.5rem' }}>
-                      {a.severity}
-                    </span>
-                    <span className="cp-alarm-msg">{a.message}</span>
-                  </div>
-                  <div className="cp-alarm-meta">
-                    <span>{a.asset}</span>
-                    <span className={`badge badge-sm ${a.status === 'in-progress' ? 'badge-yellow' : 'badge-blue'}`}>{a.status}</span>
-                  </div>
-                </div>
-              ))}
+
+          {/* Severity summary bar */}
+          <div className="cp-alert-summary">
+            <div className="cp-alert-summary-item">
+              <span className="cp-alert-dot critical" />
+              <span className="cp-alert-summary-count" style={{ color: 'var(--danger)' }}>{alarms.filter(a => a.severity === 'critical').length}</span>
+              <span className="cp-alert-summary-label">Critical</span>
             </div>
-          )}
+            <div className="cp-alert-summary-item">
+              <span className="cp-alert-dot warning" />
+              <span className="cp-alert-summary-count" style={{ color: 'var(--warning)' }}>{alarms.filter(a => a.severity === 'warning').length}</span>
+              <span className="cp-alert-summary-label">Warning</span>
+            </div>
+            <div className="cp-alert-summary-item">
+              <span className="cp-alert-dot info" />
+              <span className="cp-alert-summary-count" style={{ color: 'var(--accent)' }}>{alarms.filter(a => a.severity === 'info').length}</span>
+              <span className="cp-alert-summary-label">Info</span>
+            </div>
+            <div className="cp-alert-summary-item" style={{ marginLeft: 'auto' }}>
+              <span className="cp-alert-summary-count" style={{ color: 'var(--text)' }}>{alarms.length}</span>
+              <span className="cp-alert-summary-label">Total</span>
+            </div>
+          </div>
+
+          {/* Alert table-style list */}
+          <div className="cp-alarm-list">
+            <div className="cp-alarm-row cp-alarm-row-header">
+              <span className="cp-alarm-col-sev">Severity</span>
+              <span className="cp-alarm-col-msg">Alert</span>
+              <span className="cp-alarm-col-asset">Asset</span>
+              <span className="cp-alarm-col-status">Status</span>
+            </div>
+            {alarms.length === 0 ? (
+              <div className="empty" style={{ padding: '1.5rem' }}>No active alerts</div>
+            ) : alarms.map(a => (
+              <div key={a.id} className="cp-alarm-row" style={{ borderLeftColor: severityColor(a.severity) }}>
+                <span className="cp-alarm-col-sev">
+                  <span className={`badge ${severityBadge(a.severity)}`}>{a.severity}</span>
+                </span>
+                <span className="cp-alarm-col-msg">
+                  <strong>{a.message}</strong>
+                  {a.time && <small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '.72rem', marginTop: '.1rem' }}>{new Date(a.time).toLocaleDateString()}</small>}
+                </span>
+                <span className="cp-alarm-col-asset">{a.asset}</span>
+                <span className="cp-alarm-col-status">
+                  <span className={`badge ${a.status === 'in-progress' ? 'badge-yellow' : a.status === 'open' ? 'badge-blue' : 'badge-gray'}`}>{a.status}</span>
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Equipment Status */}
@@ -388,14 +419,55 @@ export default function ControlPanel() {
             <h3>🏗️ Equipment Status</h3>
             <Link to="/assets" className="btn btn-sm btn-secondary">Manage</Link>
           </div>
+
+          {/* Status summary bar */}
+          <div className="cp-equip-summary">
+            <div className="cp-equip-summary-item">
+              <span className="cp-equip-dot active" />
+              <span className="cp-equip-summary-count" style={{ color: 'var(--success)' }}>{equipStatus.filter(e => e.status === 'active').length}</span>
+              <span className="cp-equip-summary-label">Active</span>
+            </div>
+            <div className="cp-equip-summary-item">
+              <span className="cp-equip-dot maintenance" />
+              <span className="cp-equip-summary-count" style={{ color: 'var(--warning)' }}>{equipStatus.filter(e => e.status === 'maintenance').length}</span>
+              <span className="cp-equip-summary-label">Maintenance</span>
+            </div>
+            <div className="cp-equip-summary-item">
+              <span className="cp-equip-dot inactive" />
+              <span className="cp-equip-summary-count" style={{ color: 'var(--danger)' }}>{equipStatus.filter(e => e.status === 'inactive').length}</span>
+              <span className="cp-equip-summary-label">Inactive</span>
+            </div>
+            <div className="cp-equip-summary-item">
+              <span className="cp-equip-dot retired" />
+              <span className="cp-equip-summary-count" style={{ color: 'var(--text-muted)' }}>{equipStatus.filter(e => e.status === 'retired').length}</span>
+              <span className="cp-equip-summary-label">Retired</span>
+            </div>
+          </div>
+
+          {/* Equipment table-style list */}
           <div className="cp-equip-list">
-            {equipStatus.map(e => (
-              <div key={e.id} className="cp-equip-item">
-                <div className="cp-equip-name">
+            <div className="cp-equip-row cp-equip-row-header">
+              <span className="cp-equip-col-name">Equipment</span>
+              <span className="cp-equip-col-cat">Category</span>
+              <span className="cp-equip-col-loc">Location</span>
+              <span className="cp-equip-col-status">Status</span>
+            </div>
+            {equipStatus.length === 0 ? (
+              <div className="empty" style={{ padding: '1.5rem' }}>No equipment found</div>
+            ) : equipStatus.map(e => (
+              <div key={e.id} className="cp-equip-row">
+                <span className="cp-equip-col-name">
                   <span className={`cp-equip-dot ${e.status}`} />
-                  <span>{e.name}</span>
-                </div>
-                <span className={`badge ${eqStatusBadge[e.status]}`}>{e.status}</span>
+                  <span>
+                    <strong>{e.name}</strong>
+                    {e.serialNumber && <small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '.72rem' }}>{e.serialNumber}</small>}
+                  </span>
+                </span>
+                <span className="cp-equip-col-cat">{e.category}</span>
+                <span className="cp-equip-col-loc">{e.location}</span>
+                <span className="cp-equip-col-status">
+                  <span className={`badge ${eqStatusBadge[e.status]}`}>{e.status}</span>
+                </span>
               </div>
             ))}
           </div>

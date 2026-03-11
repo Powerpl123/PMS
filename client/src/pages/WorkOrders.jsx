@@ -14,7 +14,7 @@ export default function WorkOrders() {
 
   const load = () => Promise.all([
     api.workOrders.list(100).catch(() => ({ data: [] })),
-    api.assets.list(100).catch(() => ({ data: [] })),
+    api.assets.list(1000).catch(() => ({ data: [] })),
   ]).then(([wo, a]) => { setItems(wo.data); setAssets(a.data); setLoading(false); });
 
   useEffect(() => { load(); }, []);
