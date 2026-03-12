@@ -77,10 +77,15 @@ create table if not exists vendors (
 
 -- Add FK on inventory after vendors exists
 do $$ begin
-  alter table inventory_items
-    add constraint fk_preferred_vendor
-    foreign key (preferred_vendor_id) references vendors(id) on delete set null;
-exception when duplicate_object then null;
+  if not exists (
+    select 1 from information_schema.table_constraints
+    where constraint_name = 'fk_preferred_vendor'
+      and table_name = 'inventory_items'
+  ) then
+    alter table inventory_items
+      add constraint fk_preferred_vendor
+      foreign key (preferred_vendor_id) references vendors(id) on delete set null;
+  end if;
 end $$;
 
 -- 5. Maintenance Reports

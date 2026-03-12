@@ -19,10 +19,14 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.99.1",
     "csv-parse": "^6.1.0",
-    "nodemailer": "^8.0.2"
+    "nodemailer": "^8.0.2",
+    "pg": "^8.20.0"
   },
   "optionalDependencies": {
     "node-opcua-client": "^2.164.2",
     "modbus-serial": "^8.0.23"
+  },
+  "devDependencies": {
+    "supabase": "^2.78.1"
   }
 }
