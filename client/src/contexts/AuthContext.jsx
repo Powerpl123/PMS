@@ -67,6 +67,7 @@ export function AuthProvider({ children }) {
   }, [session]);
 
   const signInWithGoogle = async () => {
+    if (!supabase) throw new Error('Supabase is not configured. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -77,16 +78,19 @@ export function AuthProvider({ children }) {
   };
 
   const signInWithEmail = async (email, password) => {
+    if (!supabase) throw new Error('Supabase is not configured. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   };
 
   const signUp = async (email, password, fullName) => {
+    if (!supabase) throw new Error('Supabase is not configured. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName },
+        emailRedirectTo: window.location.origin,
       },
     });
     if (error) throw error;
