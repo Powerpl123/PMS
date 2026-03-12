@@ -53,6 +53,25 @@ const snakeToMap = {
   approved_by: 'approvedBy',
   full_name: 'fullName',
   user_id: 'userId',
+  tag_name: 'tagName',
+  tag_id: 'tagId',
+  min_range: 'minRange',
+  max_range: 'maxRange',
+  warn_low: 'warnLow',
+  warn_high: 'warnHigh',
+  crit_low: 'critLow',
+  crit_high: 'critHigh',
+  generation_unit: 'generationUnit',
+  capacity_mw: 'capacityMw',
+  load_setpoint_mw: 'loadSetpointMw',
+  fuel_type: 'fuelType',
+  rule_id: 'ruleId',
+  message_template: 'messageTemplate',
+  auto_create_wo: 'autoCreateWo',
+  acknowledged_by: 'acknowledgedBy',
+  triggered_at: 'triggeredAt',
+  resolved_at: 'resolvedAt',
+  unit_number: 'unitNumber',
 };
 
 const camelToSnake = Object.fromEntries(
@@ -369,6 +388,185 @@ const notificationsApi = {
   },
 };
 
+/* ─── Sensor Tags ─── */
+const sensorTagsApi = {
+  ...tableApi('sensor_tags'),
+  async listByAsset(assetId) {
+    const { data, error } = await supabase
+      .from('sensor_tags')
+      .select('*')
+      .eq('asset_id', assetId)
+      .eq('active', true)
+      .order('parameter');
+    if (error) throw new Error(error.message);
+    return data.map(toCamel);
+  },
+  async listByUnit(unitNumber) {
+    const { data, error } = await supabase
+      .from('sensor_tags')
+      .select('*')
+      .eq('generation_unit', unitNumber)
+      .eq('active', true)
+      .order('parameter');
+    if (error) throw new Error(error.message);
+    return data.map(toCamel);
+  },
+};
+
+/* ─── Sensor Readings ─── */
+const sensorReadingsApi = {
+  /** Most recent value per tag */
+  async latest(tagIds) {
+    if (!tagIds || tagIds.length === 0) return [];
+    // Get latest reading for each tag using distinct on
+    const { data, error } = await supabase
+      .rpc('get_latest_readings', { tag_ids: tagIds });
+    if (error) {
+      // Fallback: fetch last reading per tag individually
+      const results = [];
+      for (const id of tagIds) {
+        const { data: d } = await supabase
+          .from('sensor_readings')
+          .select('*')
+          .eq('tag_id', id)
+          .order('timestamp', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (d) results.push(toCamel(d));
+      }
+      return results;
+    }
+    return (data || []).map(toCamel);
+  },
+
+  /** Time range query for trending */
+  async history(tagId, from, to, limit = 500) {
+    let query = supabase
+      .from('sensor_readings')
+      .select('value, quality, timestamp')
+      .eq('tag_id', tagId)
+      .order('timestamp', { ascending: true })
+      .limit(limit);
+    if (from) query = query.gte('timestamp', from);
+    if (to) query = query.lte('timestamp', to);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  /** Subscribe to new readings via Supabase Realtime */
+  subscribe(tagIds, callback) {
+    const channel = supabase
+      .channel('sensor-live')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'sensor_readings' },
+        (payload) => {
+          if (!tagIds || tagIds.includes(payload.new.tag_id)) {
+            callback(toCamel(payload.new));
+          }
+        }
+      )
+      .subscribe();
+    // Return unsubscribe function
+    return () => supabase.removeChannel(channel);
+  },
+
+  /** Bulk insert (for testing / simulation) */
+  async bulkInsert(rows) {
+    const { error } = await supabase
+      .from('sensor_readings')
+      .insert(rows.map(r => ({
+        tag_id: r.tagId,
+        value: r.value,
+        quality: r.quality || 'good',
+        timestamp: r.timestamp || new Date().toISOString(),
+      })));
+    if (error) throw new Error(error.message);
+  },
+};
+
+/* ─── Alarm Events ─── */
+const alarmEventsApi = {
+  async active(limit = 100) {
+    const { data, error } = await supabase
+      .from('alarm_events')
+      .select('*, sensor_tags(tag_name, parameter, generation_unit)')
+      .is('resolved_at', null)
+      .order('triggered_at', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return (data || []).map(row => {
+      const c = toCamel(row);
+      if (row.sensor_tags) {
+        c.tagName = row.sensor_tags.tag_name;
+        c.parameter = row.sensor_tags.parameter;
+        c.generationUnit = row.sensor_tags.generation_unit;
+      }
+      delete c.sensorTags;
+      return c;
+    });
+  },
+
+  async history(from, to, limit = 200) {
+    let query = supabase
+      .from('alarm_events')
+      .select('*, sensor_tags(tag_name, parameter)')
+      .order('triggered_at', { ascending: false })
+      .limit(limit);
+    if (from) query = query.gte('triggered_at', from);
+    if (to) query = query.lte('triggered_at', to);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return (data || []).map(toCamel);
+  },
+
+  async acknowledge(id, userName) {
+    const { error } = await supabase
+      .from('alarm_events')
+      .update({ acknowledged: true, acknowledged_by: userName })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  subscribe(callback) {
+    const channel = supabase
+      .channel('alarm-live')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'alarm_events' },
+        (payload) => callback(toCamel(payload.new))
+      )
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  },
+};
+
+/* ─── Alarm Rules ─── */
+const alarmRulesApi = tableApi('alarm_rules');
+
+/* ─── Generation Units ─── */
+const generationUnitsApi = {
+  async list() {
+    const { data, error } = await supabase
+      .from('generation_units')
+      .select('*')
+      .order('unit_number');
+    if (error) throw new Error(error.message);
+    return data.map(toCamel);
+  },
+  async update(id, body) {
+    const { data, error } = await supabase
+      .from('generation_units')
+      .update(toSnake(body))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return toCamel(data);
+  },
+};
+
 /* ─── Exported API object ─── */
 export const api = {
   assets: tableApi('assets'),
@@ -380,5 +578,10 @@ export const api = {
   reports: tableApi('maintenance_reports'),
   profiles: profilesApi,
   notifications: notificationsApi,
+  sensorTags: sensorTagsApi,
+  sensorReadings: sensorReadingsApi,
+  alarmEvents: alarmEventsApi,
+  alarmRules: alarmRulesApi,
+  generationUnits: generationUnitsApi,
 };
 

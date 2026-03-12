@@ -11,22 +11,34 @@ function simGauge(base, drift) {
   return +(base + (Math.random() - 0.5) * drift * 2).toFixed(1);
 }
 
-/* Default unit configurations */
+/* Default unit configurations (fallback when DB has no generation_units) */
 const DEFAULT_UNITS = [
-  { id: 1, name: 'Unit 1', capacity: 35, online: true, loadSetpoint: 35 },
-  { id: 2, name: 'Unit 2', capacity: 35, online: true, loadSetpoint: 35 },
+  { id: 'sim-1', unitNumber: 1, name: 'Unit 1', capacityMw: 35, online: true, loadSetpointMw: 35, fuelType: 'peat' },
+  { id: 'sim-2', unitNumber: 2, name: 'Unit 2', capacityMw: 35, online: true, loadSetpointMw: 35, fuelType: 'peat' },
 ];
 
-/* simulated live parameters based on config */
+/* Map parameter names to gauge config */
+const GAUGE_CFG = {
+  steam_temp:     { label: 'Steam Temp',     unit: '°C',    min: 400, max: 600, warnLow: 480, warnHigh: 560, critLow: 450, critHigh: 580 },
+  steam_pressure: { label: 'Steam Pressure', unit: ' bar',  min: 100, max: 250, warnLow: 140, warnHigh: 200, critLow: 120, critHigh: 220 },
+  cond_vacuum:    { label: 'Cond. Vacuum',   unit: ' bar',  min: -1,  max: 0,   warnLow: -0.99, warnHigh: -0.85, critLow: -1, critHigh: -0.8 },
+  vibration:      { label: 'Vibration',       unit: ' mm/s', min: 0,   max: 10,  warnLow: -1, warnHigh: 5, critLow: -1, critHigh: 7.5 },
+  bearing_temp:   { label: 'Bearing Temp',   unit: '°C',    min: 30,  max: 100, warnLow: 0, warnHigh: 78, critLow: 0, critHigh: 90 },
+  exhaust_temp:   { label: 'Exhaust Temp',   unit: '°C',    min: 20,  max: 80,  warnLow: 0, warnHigh: 55, critLow: 0, critHigh: 65 },
+  load:           { label: 'Load',            unit: ' MW',   min: 0,   max: 40,  warnLow: -1, warnHigh: 35, critLow: -1, critHigh: 38 },
+  frequency:      { label: 'Grid Frequency',  unit: ' Hz',   min: 49,  max: 51,  warnLow: 49.5, warnHigh: 50.5, critLow: 49.2, critHigh: 50.8 },
+};
+
+/* simulated live parameters based on config (used when no sensor tags are configured) */
 function simUnit(cfg) {
   if (!cfg.online) return {
     ...cfg, load: 0, steamTemp: 0, steamPressure: 0, condVacuum: 0,
     vibration: 0, bearingTemp: 0, exhaustTemp: 0, frequency: 0,
   };
-  const loadPct = cfg.loadSetpoint / cfg.capacity;
+  const loadPct = cfg.loadSetpointMw / cfg.capacityMw;
   return {
     ...cfg,
-    load: simGauge(cfg.loadSetpoint, cfg.capacity * 0.03),
+    load: simGauge(cfg.loadSetpointMw, cfg.capacityMw * 0.03),
     steamTemp: simGauge(440 + loadPct * 120, 12),
     steamPressure: simGauge(100 + loadPct * 100, 6),
     condVacuum: simGauge(-0.92, 0.03),
@@ -70,14 +82,19 @@ function GaugeBar({ label, value, unit, min, max, warnLow, warnHigh, critLow, cr
 }
 
 /* ── Unit Card ── */
-function UnitCard({ data, onToggle, onSetLoad, onOpenSettings }) {
+function UnitCard({ data, gauges, isLive, onToggle, onSetLoad, onOpenSettings }) {
+  const capacity = data.capacityMw;
+  const loadSetpoint = data.loadSetpointMw;
+  const load = gauges.load ?? data.load ?? 0;
+
   return (
     <div className={`cp-unit card ${data.online ? '' : 'cp-unit-offline'}`}>
       <div className="cp-unit-header">
         <div className="cp-unit-title">
           <span className={`cp-unit-dot ${data.online ? 'online' : 'offline'}`} />
           <h3>{data.name}</h3>
-          <span style={{ fontSize: '.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>({data.capacity} MW)</span>
+          <span style={{ fontSize: '.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>({capacity} MW)</span>
+          {isLive && <span className="badge badge-green" style={{ marginLeft: '.5rem', fontSize: '.6rem' }}>LIVE</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
           <span className={`badge ${data.online ? 'badge-green' : 'badge-red'}`}>
@@ -99,11 +116,11 @@ function UnitCard({ data, onToggle, onSetLoad, onOpenSettings }) {
           <div className="cp-load-control">
             <label>Load Setpoint:</label>
             <input
-              type="range" min={0} max={data.capacity} step={10}
-              value={data.loadSetpoint}
+              type="range" min={0} max={capacity} step={10}
+              value={loadSetpoint}
               onChange={e => onSetLoad(data.id, Number(e.target.value))}
             />
-            <span className="cp-load-sp-value">{data.loadSetpoint} MW</span>
+            <span className="cp-load-sp-value">{loadSetpoint} MW</span>
           </div>
         )}
       </div>
@@ -111,20 +128,20 @@ function UnitCard({ data, onToggle, onSetLoad, onOpenSettings }) {
       {data.online ? (
         <div className="cp-unit-body">
           <div className="cp-unit-load">
-            <div className="cp-load-value">{data.load}</div>
+            <div className="cp-load-value">{load.toFixed ? load.toFixed(1) : load}</div>
             <div className="cp-load-label">MW Output</div>
             <div className="cp-load-bar-track">
-              <div className="cp-load-bar-fill" style={{ width: `${clamp(data.load / data.capacity * 100, 0, 100)}%` }} />
+              <div className="cp-load-bar-fill" style={{ width: `${clamp(load / capacity * 100, 0, 100)}%` }} />
             </div>
-            <div className="cp-load-capacity">{(data.load / data.capacity * 100).toFixed(0)}% of {data.capacity} MW</div>
+            <div className="cp-load-capacity">{(load / capacity * 100).toFixed(0)}% of {capacity} MW</div>
           </div>
           <div className="cp-gauges-grid">
-            <GaugeBar label="Steam Temp" value={data.steamTemp} unit="°C" min={400} max={600} warnLow={480} warnHigh={560} critLow={450} critHigh={580} />
-            <GaugeBar label="Steam Pressure" value={data.steamPressure} unit=" bar" min={100} max={250} warnLow={140} warnHigh={200} critLow={120} critHigh={220} />
-            <GaugeBar label="Cond. Vacuum" value={data.condVacuum} unit=" bar" min={-1} max={0} warnLow={-0.99} warnHigh={-0.85} critLow={-1} critHigh={-0.8} />
-            <GaugeBar label="Vibration" value={data.vibration} unit=" mm/s" min={0} max={10} warnLow={-1} warnHigh={5} critLow={-1} critHigh={7.5} />
-            <GaugeBar label="Bearing Temp" value={data.bearingTemp} unit="°C" min={30} max={100} warnLow={0} warnHigh={78} critLow={0} critHigh={90} />
-            <GaugeBar label="Exhaust Temp" value={data.exhaustTemp} unit="°C" min={20} max={80} warnLow={0} warnHigh={55} critLow={0} critHigh={65} />
+            <GaugeBar label="Steam Temp" value={gauges.steamTemp ?? data.steamTemp ?? 0} unit="°C" min={400} max={600} warnLow={480} warnHigh={560} critLow={450} critHigh={580} />
+            <GaugeBar label="Steam Pressure" value={gauges.steamPressure ?? data.steamPressure ?? 0} unit=" bar" min={100} max={250} warnLow={140} warnHigh={200} critLow={120} critHigh={220} />
+            <GaugeBar label="Cond. Vacuum" value={gauges.condVacuum ?? data.condVacuum ?? 0} unit=" bar" min={-1} max={0} warnLow={-0.99} warnHigh={-0.85} critLow={-1} critHigh={-0.8} />
+            <GaugeBar label="Vibration" value={gauges.vibration ?? data.vibration ?? 0} unit=" mm/s" min={0} max={10} warnLow={-1} warnHigh={5} critLow={-1} critHigh={7.5} />
+            <GaugeBar label="Bearing Temp" value={gauges.bearingTemp ?? data.bearingTemp ?? 0} unit="°C" min={30} max={100} warnLow={0} warnHigh={78} critLow={0} critHigh={90} />
+            <GaugeBar label="Exhaust Temp" value={gauges.exhaustTemp ?? data.exhaustTemp ?? 0} unit="°C" min={20} max={80} warnLow={0} warnHigh={55} critLow={0} critHigh={65} />
           </div>
         </div>
       ) : (
@@ -139,10 +156,10 @@ function UnitCard({ data, onToggle, onSetLoad, onOpenSettings }) {
 /* ── Unit Settings Modal ── */
 function UnitSettingsModal({ unit, onClose, onSave }) {
   const [name, setName] = useState(unit.name);
-  const [capacity, setCapacity] = useState(unit.capacity);
+  const [capacity, setCapacity] = useState(unit.capacityMw);
 
   function handleSave() {
-    onSave(unit.id, { name, capacity: Number(capacity) });
+    onSave(unit.id, { name, capacityMw: Number(capacity) });
     onClose();
   }
 
@@ -164,7 +181,7 @@ function UnitSettingsModal({ unit, onClose, onSave }) {
         </div>
         <div className="form-group">
           <label>Current Load Setpoint</label>
-          <input value={`${unit.loadSetpoint} MW`} disabled />
+          <input value={`${unit.loadSetpointMw} MW`} disabled />
         </div>
         <div className="modal-actions">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -177,38 +194,122 @@ function UnitSettingsModal({ unit, onClose, onSave }) {
 
 /* ── Main Control Panel ── */
 export default function ControlPanel() {
-  const [unitConfigs, setUnitConfigs] = useState(DEFAULT_UNITS);
-  const [units, setUnits] = useState(() => DEFAULT_UNITS.map(c => simUnit(c)));
+  const [unitConfigs, setUnitConfigs] = useState([]);
+  const [units, setUnits] = useState([]);
+  const [liveValues, setLiveValues] = useState({}); // { tagId: { value, timestamp } }
+  const [sensorTags, setSensorTags] = useState([]); // all active sensor tags
   const [plantStats, setPlantStats] = useState(null);
   const [alarms, setAlarms] = useState([]);
+  const [liveAlarms, setLiveAlarms] = useState([]);
   const [equipStatus, setEquipStatus] = useState([]);
   const [tick, setTick] = useState(0);
-  const [settingsUnit, setSettingsUnit] = useState(null); // unit config for settings modal
+  const [settingsUnit, setSettingsUnit] = useState(null);
+  const [dataMode, setDataMode] = useState('loading'); // 'live' | 'simulated' | 'loading'
   const configRef = useRef(unitConfigs);
   configRef.current = unitConfigs;
+  const unsubRef = useRef([]);
+
+  /* Load generation units from DB or fall back to defaults */
+  const loadUnits = useCallback(async () => {
+    try {
+      const dbUnits = await api.generationUnits.list();
+      if (dbUnits.length > 0) {
+        setUnitConfigs(dbUnits);
+      } else {
+        setUnitConfigs(DEFAULT_UNITS);
+      }
+    } catch {
+      setUnitConfigs(DEFAULT_UNITS);
+    }
+  }, []);
+
+  /* Load sensor tags and determine live vs simulated mode */
+  const loadSensorTags = useCallback(async () => {
+    try {
+      const { data } = await api.sensorTags.list(1000);
+      const activeTags = (data || []).filter(t => t.active !== false);
+      setSensorTags(activeTags);
+      if (activeTags.length > 0) {
+        setDataMode('live');
+        // Fetch latest readings for all tags
+        const tagIds = activeTags.map(t => t.id);
+        const latest = await api.sensorReadings.latest(tagIds);
+        const vals = {};
+        latest.forEach(r => { vals[r.tagId] = { value: r.value, timestamp: r.timestamp }; });
+        setLiveValues(vals);
+      } else {
+        setDataMode('simulated');
+      }
+    } catch {
+      setDataMode('simulated');
+    }
+  }, []);
+
+  /* Load live alarm events */
+  const loadAlarmEvents = useCallback(async () => {
+    try {
+      const active = await api.alarmEvents.active(50);
+      setLiveAlarms(active);
+    } catch { /* ignore */ }
+  }, []);
 
   /* Toggle unit online/offline */
-  function toggleUnit(id) {
+  async function toggleUnit(id) {
+    const unit = unitConfigs.find(u => u.id === id);
+    if (!unit) return;
+    const newOnline = !unit.online;
+    const newSetpoint = newOnline ? Math.round(unit.capacityMw * 0.8) : 0;
+    // Try to persist to DB
+    try {
+      await api.generationUnits.update(id, { online: newOnline, loadSetpointMw: newSetpoint });
+    } catch { /* local-only update for sim units */ }
     setUnitConfigs(prev => prev.map(u =>
-      u.id === id ? { ...u, online: !u.online, loadSetpoint: u.online ? 0 : Math.round(u.capacity * 0.8) } : u
+      u.id === id ? { ...u, online: newOnline, loadSetpointMw: newSetpoint } : u
     ));
   }
 
   /* Adjust load setpoint */
-  function setLoadSetpoint(id, mw) {
+  async function setLoadSetpoint(id, mw) {
+    try {
+      await api.generationUnits.update(id, { loadSetpointMw: mw });
+    } catch { /* local-only */ }
     setUnitConfigs(prev => prev.map(u =>
-      u.id === id ? { ...u, loadSetpoint: mw } : u
+      u.id === id ? { ...u, loadSetpointMw: mw } : u
     ));
   }
 
   /* Save unit settings (name, capacity) */
-  function saveUnitSettings(id, patch) {
+  async function saveUnitSettings(id, patch) {
+    try {
+      await api.generationUnits.update(id, patch);
+    } catch { /* local-only */ }
     setUnitConfigs(prev => prev.map(u =>
-      u.id === id ? { ...u, ...patch, loadSetpoint: Math.min(u.loadSetpoint, patch.capacity) } : u
+      u.id === id ? { ...u, ...patch, loadSetpointMw: Math.min(u.loadSetpointMw, patch.capacityMw || u.capacityMw) } : u
     ));
   }
 
-  /* Load real data from API */
+  /* Build gauge values for a unit from live sensor readings */
+  function getGaugesForUnit(unit) {
+    if (dataMode !== 'live') return {};
+    const unitTags = sensorTags.filter(t => t.generationUnit === unit.unitNumber);
+    const gauges = {};
+    for (const tag of unitTags) {
+      const reading = liveValues[tag.id];
+      if (!reading) continue;
+      // Map parameter name to camelCase gauge key
+      const paramMap = {
+        steam_temp: 'steamTemp', steam_pressure: 'steamPressure',
+        cond_vacuum: 'condVacuum', vibration: 'vibration',
+        bearing_temp: 'bearingTemp', exhaust_temp: 'exhaustTemp',
+        load: 'load', frequency: 'frequency',
+      };
+      const key = paramMap[tag.parameter];
+      if (key) gauges[key] = reading.value;
+    }
+    return gauges;
+  }
+
+  /* Load work-order and asset data from API */
   const loadData = useCallback(async () => {
     try {
       const [assetsRes, ordersRes] = await Promise.all([
@@ -227,7 +328,7 @@ export default function ControlPanel() {
       const inProgress = orders.filter(o => o.status === 'in-progress').length;
       setPlantStats({ total: assets.length, active, maint, openOrders, critOrders, inProgress });
 
-      /* build equipment status from real assets */
+      /* equipment status from real assets */
       setEquipStatus(assets.map(a => ({
         id: a.id,
         name: a.name,
@@ -237,7 +338,7 @@ export default function ControlPanel() {
         serialNumber: a.serialNumber || '',
       })));
 
-      /* build alarms from critical/high work orders */
+      /* build alarms from work orders */
       const alarmList = orders
         .filter(o => o.status !== 'completed' && o.status !== 'cancelled')
         .sort((a, b) => {
@@ -252,33 +353,111 @@ export default function ControlPanel() {
           asset: o.assetId?.name || 'Unknown',
           time: o.createdAt,
           status: o.status,
+          source: 'wo',
         }));
       setAlarms(alarmList);
     } catch { /* silently retry on next tick */ }
   }, []);
 
-  /* refresh simulation + data */
+  /* Initial load */
   useEffect(() => {
+    loadUnits();
+    loadSensorTags();
+    loadAlarmEvents();
     loadData();
+  }, [loadUnits, loadSensorTags, loadAlarmEvents, loadData]);
+
+  /* Subscribe to Realtime channels when in live mode */
+  useEffect(() => {
+    if (dataMode !== 'live' || sensorTags.length === 0) return;
+
+    const tagIds = sensorTags.map(t => t.id);
+    const unsubSensor = api.sensorReadings.subscribe(tagIds, (reading) => {
+      setLiveValues(prev => ({
+        ...prev,
+        [reading.tagId]: { value: reading.value, timestamp: reading.timestamp },
+      }));
+    });
+
+    const unsubAlarm = api.alarmEvents.subscribe((alarmEvt) => {
+      setLiveAlarms(prev => [alarmEvt, ...prev].slice(0, 50));
+    });
+
+    unsubRef.current = [unsubSensor, unsubAlarm];
+    return () => { unsubRef.current.forEach(fn => fn()); };
+  }, [dataMode, sensorTags]);
+
+  /* Simulation ticker (only active when no live sensor data) */
+  useEffect(() => {
+    if (unitConfigs.length === 0) return;
+    if (dataMode === 'live') {
+      // In live mode, just build units from configs (gauges come from liveValues)
+      setUnits(unitConfigs);
+      return;
+    }
+    // Simulated mode
+    setUnits(unitConfigs.map(c => simUnit(c)));
     const interval = setInterval(() => {
       setTick(t => t + 1);
       setUnits(configRef.current.map(c => simUnit(c)));
     }, REFRESH_MS);
     return () => clearInterval(interval);
-  }, [loadData]);
+  }, [unitConfigs, dataMode]);
 
-  /* re-sim when configs change */
+  /* Re-sim when configs change (simulated mode) */
   useEffect(() => {
-    setUnits(unitConfigs.map(c => simUnit(c)));
-  }, [unitConfigs]);
+    if (dataMode === 'simulated' && unitConfigs.length > 0) {
+      setUnits(unitConfigs.map(c => simUnit(c)));
+    } else if (dataMode === 'live') {
+      setUnits(unitConfigs);
+    }
+  }, [unitConfigs, dataMode]);
 
-  /* re-fetch real data every 30s */
+  /* Periodic data refresh */
   useEffect(() => {
-    if (tick > 0 && tick % 2 === 0) loadData();
-  }, [tick, loadData]);
+    if (tick > 0 && tick % 2 === 0) {
+      loadData();
+      if (dataMode === 'live') loadAlarmEvents();
+    }
+  }, [tick, loadData, loadAlarmEvents, dataMode]);
 
-  const totalMW = units.reduce((s, u) => s + (u.online ? u.load : 0), 0);
-  const freq = units.find(u => u.online)?.frequency ?? 0;
+  /* Merge WO alarms + sensor alarm events */
+  const allAlarms = [
+    ...liveAlarms.map(a => ({
+      id: `alarm-${a.id}`,
+      message: a.message || `${a.parameter || 'Sensor'} alarm: ${a.severity}`,
+      severity: a.severity,
+      priority: a.severity,
+      asset: a.tagName || '—',
+      time: a.triggeredAt,
+      status: a.acknowledged ? 'acknowledged' : 'active',
+      source: 'sensor',
+    })),
+    ...alarms,
+  ].sort((a, b) => {
+    const p = { critical: 0, warning: 1, info: 2 };
+    return (p[a.severity] ?? 3) - (p[b.severity] ?? 3);
+  });
+
+  const totalMW = units.reduce((s, u) => {
+    if (!u.online) return s;
+    if (dataMode === 'live') {
+      const g = getGaugesForUnit(u);
+      return s + (g.load ?? 0);
+    }
+    return s + (u.load ?? 0);
+  }, 0);
+
+  const freq = (() => {
+    if (dataMode === 'live') {
+      const onlineUnit = units.find(u => u.online);
+      if (onlineUnit) {
+        const g = getGaugesForUnit(onlineUnit);
+        if (g.frequency != null) return g.frequency;
+      }
+    }
+    return units.find(u => u.online)?.frequency ?? 0;
+  })();
 
   const eqStatusBadge = { active: 'badge-green', maintenance: 'badge-yellow', retired: 'badge-gray', inactive: 'badge-red' };
 
@@ -290,8 +469,10 @@ export default function ControlPanel() {
           <div className="subtitle">Real-time plant monitoring & status overview</div>
         </div>
         <div className="cp-live-tag">
-          <span className="cp-live-dot" /> LIVE
-          <span className="cp-refresh-note">Auto-refresh {REFRESH_MS / 1000}s</span>
+          <span className="cp-live-dot" /> {dataMode === 'live' ? 'LIVE' : 'SIMULATED'}
+          <span className="cp-refresh-note">
+            {dataMode === 'live' ? 'Realtime via Supabase' : `Auto-refresh ${REFRESH_MS / 1000}s`}
+          </span>
         </div>
       </div>
 
@@ -337,6 +518,8 @@ export default function ControlPanel() {
           <UnitCard
             key={u.id}
             data={u}
+            gauges={dataMode === 'live' ? getGaugesForUnit(u) : {}}
+            isLive={dataMode === 'live'}
             onToggle={toggleUnit}
             onSetLoad={setLoadSetpoint}
             onOpenSettings={(d) => setSettingsUnit(unitConfigs.find(c => c.id === d.id))}
@@ -366,21 +549,21 @@ export default function ControlPanel() {
           <div className="cp-alert-summary">
             <div className="cp-alert-summary-item">
               <span className="cp-alert-dot critical" />
-              <span className="cp-alert-summary-count" style={{ color: 'var(--danger)' }}>{alarms.filter(a => a.severity === 'critical').length}</span>
+              <span className="cp-alert-summary-count" style={{ color: 'var(--danger)' }}>{allAlarms.filter(a => a.severity === 'critical').length}</span>
               <span className="cp-alert-summary-label">Critical</span>
             </div>
             <div className="cp-alert-summary-item">
               <span className="cp-alert-dot warning" />
-              <span className="cp-alert-summary-count" style={{ color: 'var(--warning)' }}>{alarms.filter(a => a.severity === 'warning').length}</span>
+              <span className="cp-alert-summary-count" style={{ color: 'var(--warning)' }}>{allAlarms.filter(a => a.severity === 'warning').length}</span>
               <span className="cp-alert-summary-label">Warning</span>
             </div>
             <div className="cp-alert-summary-item">
               <span className="cp-alert-dot info" />
-              <span className="cp-alert-summary-count" style={{ color: 'var(--accent)' }}>{alarms.filter(a => a.severity === 'info').length}</span>
+              <span className="cp-alert-summary-count" style={{ color: 'var(--accent)' }}>{allAlarms.filter(a => a.severity === 'info').length}</span>
               <span className="cp-alert-summary-label">Info</span>
             </div>
             <div className="cp-alert-summary-item" style={{ marginLeft: 'auto' }}>
-              <span className="cp-alert-summary-count" style={{ color: 'var(--text)' }}>{alarms.length}</span>
+              <span className="cp-alert-summary-count" style={{ color: 'var(--text)' }}>{allAlarms.length}</span>
               <span className="cp-alert-summary-label">Total</span>
             </div>
           </div>
@@ -393,9 +576,9 @@ export default function ControlPanel() {
               <span className="cp-alarm-col-asset">Asset</span>
               <span className="cp-alarm-col-status">Status</span>
             </div>
-            {alarms.length === 0 ? (
+            {allAlarms.length === 0 ? (
               <div className="empty" style={{ padding: '1.5rem' }}>No active alerts</div>
-            ) : alarms.map(a => (
+            ) : allAlarms.map(a => (
               <div key={a.id} className="cp-alarm-row" style={{ borderLeftColor: severityColor(a.severity) }}>
                 <span className="cp-alarm-col-sev">
                   <span className={`badge ${severityBadge(a.severity)}`}>{a.severity}</span>

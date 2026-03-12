@@ -5,19 +5,31 @@ import NotificationBell from './components/NotificationBell';
 const mainLinks = [
   { to: '/', label: 'Dashboard', icon: '⚡' },
   { to: '/control-panel', label: 'Control Panel', icon: '🖥️' },
+  { to: '/monitoring', label: 'Monitoring', icon: '📡' },
   { to: '/assets', label: 'Plant Assets', icon: '🏗️' },
   { to: '/work-orders', label: 'Work Orders', icon: '🔧' },
   { to: '/work-requests', label: 'Work Requests', icon: '📋' },
 ];
 
+const powerLinks = [
+  { to: '/generator-control', label: 'Generator Control', icon: '⚙️' },
+  { to: '/load-sharing', label: 'Load Sharing', icon: '⚖️' },
+  { to: '/grid-stability', label: 'Grid Stability', icon: '🔌' },
+  { to: '/energy-efficiency', label: 'Energy Efficiency', icon: '🌿' },
+  { to: '/blackout-prevention', label: 'Blackout Prevention', icon: '🛡️' },
+  { to: '/protection-safety', label: 'Protection & Safety', icon: '🔒' },
+];
+
 const operationLinks = [
   { to: '/inventory', label: 'Spare Parts', icon: '📦' },
   { to: '/vendors', label: 'Suppliers', icon: '🤝' },
+  { to: '/sensor-config', label: 'Sensor Tags', icon: '🔗' },
 ];
 
 const analyticsLinks = [
   { to: '/predictive', label: 'Failure Prediction', icon: '🧠' },
   { to: '/reports', label: 'Reports', icon: '📊' },
+  { to: '/trending', label: 'Sensor Trending', icon: '📈' },
 ];
 
 const adminLinks = [
@@ -52,6 +64,7 @@ export default function Layout() {
         </div>
         <div className="sidebar-nav">
           <NavSection title="Overview" links={mainLinks} />
+          <NavSection title="Power Generation" links={powerLinks} />
           <NavSection title="Operations" links={operationLinks} />
           <NavSection title="Analytics" links={analyticsLinks} />
           <NavSection title="Administration" links={adminLinks} />

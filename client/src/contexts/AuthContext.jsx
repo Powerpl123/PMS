@@ -9,6 +9,11 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     // Get the current session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);

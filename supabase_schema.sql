@@ -76,9 +76,12 @@ create table if not exists vendors (
 );
 
 -- Add FK on inventory after vendors exists
-alter table inventory_items
-  add constraint fk_preferred_vendor
-  foreign key (preferred_vendor_id) references vendors(id) on delete set null;
+do $$ begin
+  alter table inventory_items
+    add constraint fk_preferred_vendor
+    foreign key (preferred_vendor_id) references vendors(id) on delete set null;
+exception when duplicate_object then null;
+end $$;
 
 -- 5. Maintenance Reports
 create table if not exists maintenance_reports (
@@ -150,24 +153,31 @@ alter table maintenance_reports enable row level security;
 alter table work_requests enable row level security;
 alter table work_permits enable row level security;
 
+drop policy if exists "Authenticated users full access" on assets;
 create policy "Authenticated users full access" on assets
   for all using (auth.role() = 'authenticated');
 
+drop policy if exists "Authenticated users full access" on work_orders;
 create policy "Authenticated users full access" on work_orders
   for all using (auth.role() = 'authenticated');
 
+drop policy if exists "Authenticated users full access" on inventory_items;
 create policy "Authenticated users full access" on inventory_items
   for all using (auth.role() = 'authenticated');
 
+drop policy if exists "Authenticated users full access" on vendors;
 create policy "Authenticated users full access" on vendors
   for all using (auth.role() = 'authenticated');
 
+drop policy if exists "Authenticated users full access" on maintenance_reports;
 create policy "Authenticated users full access" on maintenance_reports
   for all using (auth.role() = 'authenticated');
 
+drop policy if exists "Authenticated users full access" on work_requests;
 create policy "Authenticated users full access" on work_requests
   for all using (auth.role() = 'authenticated');
 
+drop policy if exists "Authenticated users full access" on work_permits;
 create policy "Authenticated users full access" on work_permits
   for all using (auth.role() = 'authenticated');
 
@@ -180,18 +190,25 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists set_updated_at on assets;
 create trigger set_updated_at before update on assets
   for each row execute function update_updated_at();
+drop trigger if exists set_updated_at on work_orders;
 create trigger set_updated_at before update on work_orders
   for each row execute function update_updated_at();
+drop trigger if exists set_updated_at on inventory_items;
 create trigger set_updated_at before update on inventory_items
   for each row execute function update_updated_at();
+drop trigger if exists set_updated_at on vendors;
 create trigger set_updated_at before update on vendors
   for each row execute function update_updated_at();
+drop trigger if exists set_updated_at on maintenance_reports;
 create trigger set_updated_at before update on maintenance_reports
   for each row execute function update_updated_at();
+drop trigger if exists set_updated_at on work_requests;
 create trigger set_updated_at before update on work_requests
   for each row execute function update_updated_at();
+drop trigger if exists set_updated_at on work_permits;
 create trigger set_updated_at before update on work_permits
   for each row execute function update_updated_at();
 
@@ -210,8 +227,10 @@ create table if not exists profiles (
 );
 
 alter table profiles enable row level security;
+drop policy if exists "Authenticated users full access" on profiles;
 create policy "Authenticated users full access" on profiles
   for all using (auth.role() = 'authenticated');
+drop trigger if exists set_updated_at on profiles;
 create trigger set_updated_at before update on profiles
   for each row execute function update_updated_at();
 
@@ -229,5 +248,161 @@ create table if not exists notifications (
 );
 
 alter table notifications enable row level security;
+drop policy if exists "Authenticated users full access" on notifications;
 create policy "Authenticated users full access" on notifications
   for all using (auth.role() = 'authenticated');
+
+-- ============================================
+-- 10. Sensor Tags — DCS tag → asset mapping
+-- ============================================
+create table if not exists sensor_tags (
+  id uuid default gen_random_uuid() primary key,
+  asset_id uuid references assets(id) on delete set null,
+  tag_name text not null unique,
+  parameter text not null
+    check (parameter in (
+      'load','steam_temp','steam_pressure','cond_vacuum',
+      'vibration','bearing_temp','exhaust_temp','frequency',
+      'drum_level','flue_gas_temp','feed_water_temp','cw_inlet_temp','cw_outlet_temp',
+      'voltage','current','power_factor','speed',
+      'fuel_flow','air_flow','o2_level','co_level',
+      'other'
+    )),
+  unit text not null default '—',
+  min_range numeric default 0,
+  max_range numeric default 100,
+  warn_low numeric,
+  warn_high numeric,
+  crit_low numeric,
+  crit_high numeric,
+  description text,
+  protocol text default 'opc-ua' check (protocol in ('opc-ua','modbus','csv')),
+  address text,
+  generation_unit int,
+  active boolean default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table sensor_tags enable row level security;
+drop policy if exists "Authenticated users full access" on sensor_tags;
+create policy "Authenticated users full access" on sensor_tags
+  for all using (auth.role() = 'authenticated');
+drop trigger if exists set_updated_at on sensor_tags;
+create trigger set_updated_at before update on sensor_tags
+  for each row execute function update_updated_at();
+
+-- ============================================
+-- 11. Sensor Readings — time-series data
+-- ============================================
+create table if not exists sensor_readings (
+  id uuid default gen_random_uuid() primary key,
+  tag_id uuid not null references sensor_tags(id) on delete cascade,
+  value numeric not null,
+  quality text not null default 'good'
+    check (quality in ('good','bad','uncertain')),
+  timestamp timestamptz not null default now()
+);
+
+create index if not exists idx_readings_tag_ts
+  on sensor_readings (tag_id, timestamp desc);
+create index if not exists idx_readings_ts
+  on sensor_readings (timestamp desc);
+
+alter table sensor_readings enable row level security;
+drop policy if exists "Authenticated users full access" on sensor_readings;
+create policy "Authenticated users full access" on sensor_readings
+  for all using (auth.role() = 'authenticated');
+
+-- Enable Supabase Realtime on sensor_readings
+do $$ begin
+  alter publication supabase_realtime add table sensor_readings;
+exception when duplicate_object then null;
+end $$;
+
+-- ============================================
+-- 12. Alarm Rules — threshold definitions
+-- ============================================
+create table if not exists alarm_rules (
+  id uuid default gen_random_uuid() primary key,
+  tag_id uuid not null references sensor_tags(id) on delete cascade,
+  condition text not null default '>'
+    check (condition in ('>','<','>=','<=','==')),
+  threshold numeric not null,
+  severity text not null default 'warning'
+    check (severity in ('warning','critical')),
+  message_template text,
+  auto_create_wo boolean default false,
+  active boolean default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table alarm_rules enable row level security;
+drop policy if exists "Authenticated users full access" on alarm_rules;
+create policy "Authenticated users full access" on alarm_rules
+  for all using (auth.role() = 'authenticated');
+drop trigger if exists set_updated_at on alarm_rules;
+create trigger set_updated_at before update on alarm_rules
+  for each row execute function update_updated_at();
+
+-- ============================================
+-- 13. Alarm Events — triggered alarm history
+-- ============================================
+create table if not exists alarm_events (
+  id uuid default gen_random_uuid() primary key,
+  rule_id uuid references alarm_rules(id) on delete set null,
+  tag_id uuid not null references sensor_tags(id) on delete cascade,
+  value numeric not null,
+  severity text not null default 'warning'
+    check (severity in ('warning','critical')),
+  message text,
+  acknowledged boolean default false,
+  acknowledged_by text,
+  triggered_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+
+create index if not exists idx_alarm_events_unresolved
+  on alarm_events (triggered_at desc) where resolved_at is null;
+
+alter table alarm_events enable row level security;
+drop policy if exists "Authenticated users full access" on alarm_events;
+create policy "Authenticated users full access" on alarm_events
+  for all using (auth.role() = 'authenticated');
+
+-- Enable Supabase Realtime on alarm_events
+do $$ begin
+  alter publication supabase_realtime add table alarm_events;
+exception when duplicate_object then null;
+end $$;
+
+-- ============================================
+-- 14. Generation Units — persisted unit config
+-- ============================================
+create table if not exists generation_units (
+  id uuid default gen_random_uuid() primary key,
+  unit_number int not null unique,
+  name text not null,
+  capacity_mw numeric not null default 35,
+  online boolean default true,
+  load_setpoint_mw numeric default 0,
+  fuel_type text default 'peat',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table generation_units enable row level security;
+drop policy if exists "Authenticated users full access" on generation_units;
+create policy "Authenticated users full access" on generation_units
+  for all using (auth.role() = 'authenticated');
+drop trigger if exists set_updated_at on generation_units;
+create trigger set_updated_at before update on generation_units
+  for each row execute function update_updated_at();
+
+-- Seed default generation units
+insert into generation_units (unit_number, name, capacity_mw, online, load_setpoint_mw)
+values
+  (1, 'Unit 1', 35, true, 35),
+  (2, 'Unit 2', 35, true, 35)
+on conflict (unit_number) do nothing;
