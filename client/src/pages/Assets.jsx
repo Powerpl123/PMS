@@ -3,7 +3,8 @@ import { api } from '../api';
 
 const categories = ['Turbine', 'Generator', 'Boiler', 'Transformer', 'Cooling System', 'Pump', 'Compressor', 'Heat Exchanger', 'Valve', 'Electrical Panel', 'Control System', 'Other'];
 const locations = ['Unit 1 – Boiler Room', 'Unit 1 – Turbine Hall', 'Unit 2 – Boiler Room', 'Unit 2 – Turbine Hall', 'Switchyard', 'Cooling Tower', 'Water Treatment', 'Control Room', 'Coal Handling', 'Ash Handling', 'Fuel Storage', 'Other'];
-const empty = { name: '', serialNumber: '', category: 'Turbine', location: 'Unit 1 – Turbine Hall', status: 'active', purchaseCost: '', usefulLifeYears: '', notes: '' };
+const assetTypes = ['PRODUCTION', 'TOOL'];
+const empty = { kksCode: '', name: '', serialNumber: '', category: '', location: '', assetType: '', modelType: '', status: 'active', usefulLifeYears: '', notes: '' };
 const statusBadge = { active: 'badge-green', maintenance: 'badge-yellow', retired: 'badge-gray', inactive: 'badge-red' };
 
 export default function Assets() {
@@ -11,13 +12,28 @@ export default function Assets() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // null | 'new' | item obj
   const [form, setForm] = useState(empty);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState('');
+  const perPage = 50;
 
-  const load = () => api.assets.list(1000).then(r => { setItems(r.data); setLoading(false); }).catch(() => { setItems([]); setLoading(false); });
+  const load = () => api.assets.list(25000).then(r => { setItems(r.data); setLoading(false); }).catch(() => { setItems([]); setLoading(false); });
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = items.filter(a => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || (a.kksCode || '').toLowerCase().includes(q) || (a.name || '').toLowerCase().includes(q) || (a.location || '').toLowerCase().includes(q) || (a.serialNumber || '').toLowerCase().includes(q) || (a.modelType || '').toLowerCase().includes(q);
+    const matchType = !typeFilter || a.assetType === typeFilter;
+    return matchSearch && matchType;
+  });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   useEffect(() => { load(); }, []);
 
   function openNew() { setForm(empty); setModal('new'); }
-  function openEdit(item) { setForm({ name: item.name, serialNumber: item.serialNumber || '', category: item.category, location: item.location, status: item.status, purchaseCost: item.purchaseCost || '', usefulLifeYears: item.usefulLifeYears || '', notes: item.notes || '' }); setModal(item); }
+  function openEdit(item) { setForm({ kksCode: item.kksCode || '', name: item.name, serialNumber: item.serialNumber || '', category: item.category || '', location: item.location || '', assetType: item.assetType || '', modelType: item.modelType || '', status: item.status, usefulLifeYears: item.usefulLifeYears || '', notes: item.notes || '' }); setModal(item); }
 
   async function save() {
     if (modal === 'new') await api.assets.create(form);
@@ -35,22 +51,36 @@ export default function Assets() {
   return (
     <div>
       <div className="page-header">
-        <div><h1>🏗️ Plant Assets</h1><div className="subtitle">Turbines, generators, boilers & equipment</div></div>
+        <div><h1>🏗️ Plant Assets</h1><div className="subtitle">Turbines, generators, boilers & equipment — {items.length} total</div></div>
         <button className="btn btn-primary" onClick={openNew}>+ Register Asset</button>
       </div>
+
+      <div className="card" style={{marginBottom:'1rem',display:'flex',gap:'0.75rem',flexWrap:'wrap',alignItems:'center'}}>
+        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search KKS, name, location, serial, model…" style={{flex:'1',minWidth:'200px'}} />
+        <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} style={{width:'160px'}}>
+          <option value="">All Types</option>
+          {assetTypes.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <span style={{color:'var(--text-muted)',fontSize:'0.9em'}}>{filtered.length} results</span>
+      </div>
+
       <div className="card">
         {loading ? <div className="loading">Loading...</div> :
-        items.length === 0 ? <div className="empty">No assets yet. Create your first one!</div> :
+        filtered.length === 0 ? <div className="empty">No assets found.</div> :
+        <>
         <table>
-          <thead><tr><th>Name</th><th>Category</th><th>Location</th><th>Status</th><th>Cost</th><th>Actions</th></tr></thead>
+          <thead><tr><th>KKS Code</th><th>Name</th><th>Asset Type</th><th>Model Type</th><th>Category</th><th>Location</th><th>Serial Number</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {items.map(a => (
+            {paged.map(a => (
               <tr key={a.id}>
-                <td><strong>{a.name}</strong><br/><small style={{color:'var(--text-muted)'}}>{a.serialNumber}</small></td>
-                <td>{a.category}</td>
+                <td><code style={{fontSize:'0.85em',background:'var(--bg-secondary)',padding:'2px 6px',borderRadius:'4px'}}>{a.kksCode || '—'}</code></td>
+                <td><strong>{a.name}</strong></td>
+                <td>{a.assetType || '—'}</td>
+                <td>{a.modelType || '—'}</td>
+                <td>{a.category || '—'}</td>
                 <td>{a.location}</td>
+                <td>{a.serialNumber || '—'}</td>
                 <td><span className={`badge ${statusBadge[a.status]}`}>{a.status}</span></td>
-                <td>${Number(a.purchaseCost || 0).toLocaleString()}</td>
                 <td>
                   <button className="btn btn-secondary btn-sm" onClick={() => openEdit(a)}>Edit</button>{' '}
                   <button className="btn btn-danger btn-sm" onClick={() => remove(a.id)}>Delete</button>
@@ -58,26 +88,45 @@ export default function Assets() {
               </tr>
             ))}
           </tbody>
-        </table>}
+        </table>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',marginTop:'0.5rem',borderTop:'1px solid var(--border)'}}>
+          <span style={{fontSize:'0.9em',color:'var(--text-muted)'}}>Page {page} of {totalPages}</span>
+          <div style={{display:'flex',gap:'0.5rem'}}>
+            <button className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
+            <button className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Next →</button>
+          </div>
+        </div>
+        </>}
       </div>
       {modal && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h2>{modal === 'new' ? 'New Asset' : 'Edit Asset'}</h2>
             <div className="form-row">
+              <div className="form-group"><label>KKS Code</label><input value={form.kksCode} onChange={e => set('kksCode', e.target.value)} placeholder="e.g. 1MAA10AT001" /></div>
               <div className="form-group"><label>Name *</label><input value={form.name} onChange={e => set('name', e.target.value)} /></div>
-              <div className="form-group"><label>Serial Number</label><input value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} /></div>
             </div>
             <div className="form-row">
-              <div className="form-group"><label>Category *</label>
+              <div className="form-group"><label>Serial Number</label><input value={form.serialNumber} onChange={e => set('serialNumber', e.target.value)} /></div>
+              <div className="form-group"><label>Model Type</label><input value={form.modelType} onChange={e => set('modelType', e.target.value)} /></div>
+            </div>
+            <div className="form-row">
+              <div className="form-group"><label>Asset Type</label>
+                <select value={form.assetType} onChange={e => set('assetType', e.target.value)}>
+                  <option value="">— Select —</option>
+                  {assetTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="form-group"><label>Category</label>
                 <select value={form.category} onChange={e => set('category', e.target.value)}>
+                  <option value="">— Select —</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+            </div>
+            <div className="form-row">
               <div className="form-group"><label>Location *</label>
-                <select value={form.location} onChange={e => set('location', e.target.value)}>
-                  {locations.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
+                <input value={form.location} onChange={e => set('location', e.target.value)} placeholder="Location" />
               </div>
             </div>
             <div className="form-row">
@@ -87,7 +136,7 @@ export default function Assets() {
                   <option value="retired">Retired</option><option value="inactive">Inactive</option>
                 </select>
               </div>
-              <div className="form-group"><label>Purchase Cost</label><input type="number" value={form.purchaseCost} onChange={e => set('purchaseCost', e.target.value)} /></div>
+
             </div>
             <div className="form-group"><label>Notes</label><textarea value={form.notes} onChange={e => set('notes', e.target.value)} /></div>
             <div className="modal-actions">

@@ -1,0 +1,224 @@
+-- ============================================================
+-- Power Plant Assets — Comprehensive Seed Data
+-- Run this in the Supabase SQL Editor to populate assets
+-- ============================================================
+
+-- Clear existing assets (optional — remove this line to keep existing)
+-- DELETE FROM assets;
+
+INSERT INTO assets (kks_code, name, serial_number, category, location, status, useful_life_years, notes) VALUES
+
+-- ═══════════════════════════════════════════
+-- TURBINES
+-- ═══════════════════════════════════════════
+('1MAA10AT001', 'Steam Turbine Unit 1 – HP Section',        'ST-HP-001',   'Turbine',        'Unit 1 – Turbine Hall', 'active',    30, 'High-pressure section, 660 MW supercritical steam turbine'),
+('1MAB10AT001', 'Steam Turbine Unit 1 – IP Section',        'ST-IP-001',   'Turbine',        'Unit 1 – Turbine Hall', 'active',    30, 'Intermediate-pressure section'),
+('1MAC10AT001', 'Steam Turbine Unit 1 – LP Section A',      'ST-LPA-001',  'Turbine',        'Unit 1 – Turbine Hall', 'active',    30, 'Low-pressure section A, double-flow'),
+('1MAC10AT002', 'Steam Turbine Unit 1 – LP Section B',      'ST-LPB-001',  'Turbine',        'Unit 1 – Turbine Hall', 'active',    30, 'Low-pressure section B, double-flow'),
+('2MAA10AT001', 'Steam Turbine Unit 2 – HP Section',        'ST-HP-002',   'Turbine',        'Unit 2 – Turbine Hall', 'active',    30, 'High-pressure section, 660 MW supercritical steam turbine'),
+('2MAB10AT001', 'Steam Turbine Unit 2 – IP Section',        'ST-IP-002',   'Turbine',        'Unit 2 – Turbine Hall', 'active',    30, 'Intermediate-pressure section'),
+('2MAC10AT001', 'Steam Turbine Unit 2 – LP Section A',      'ST-LPA-002',  'Turbine',        'Unit 2 – Turbine Hall', 'active',    30, 'Low-pressure section A, double-flow'),
+('2MAC10AT002', 'Steam Turbine Unit 2 – LP Section B',      'ST-LPB-002',  'Turbine',        'Unit 2 – Turbine Hall', 'active',    30, 'Low-pressure section B, double-flow'),
+
+-- ═══════════════════════════════════════════
+-- GENERATORS
+-- ═══════════════════════════════════════════
+('1MAG10GE001', 'Main Generator Unit 1',                    'GEN-001',     'Generator',      'Unit 1 – Turbine Hall', 'active',    35, 'Hydrogen-cooled synchronous generator, 750 MVA'),
+('2MAG10GE001', 'Main Generator Unit 2',                    'GEN-002',     'Generator',      'Unit 2 – Turbine Hall', 'active',    35, 'Hydrogen-cooled synchronous generator, 750 MVA'),
+('1MAW10GE001', 'Exciter Unit 1',                           'EXC-001',     'Generator',      'Unit 1 – Turbine Hall', 'active',    25, 'Brushless excitation system for Generator 1'),
+('2MAW10GE001', 'Exciter Unit 2',                           'EXC-002',     'Generator',      'Unit 2 – Turbine Hall', 'active',    25, 'Brushless excitation system for Generator 2'),
+('0EGA10GD001', 'Emergency Diesel Generator EDG-1',         'EDG-001',     'Generator',      'Control Room',          'active',    20, '2 MW diesel generator for emergency backup power'),
+('0EGA10GD002', 'Emergency Diesel Generator EDG-2',         'EDG-002',     'Generator',      'Control Room',          'active',    20, '2 MW diesel generator for emergency backup power'),
+
+-- ═══════════════════════════════════════════
+-- BOILERS
+-- ═══════════════════════════════════════════
+('1HAA10BB001', 'Boiler Drum Unit 1',                       'BLR-DR-001',  'Boiler',         'Unit 1 – Boiler Room',  'active',    25, 'Supercritical once-through boiler, 2400 t/h steam capacity'),
+('2HAA10BB001', 'Boiler Drum Unit 2',                       'BLR-DR-002',  'Boiler',         'Unit 2 – Boiler Room',  'active',    25, 'Supercritical once-through boiler, 2400 t/h steam capacity'),
+('1HBA10BB001', 'Superheater Unit 1',                       'BLR-SH-001',  'Boiler',         'Unit 1 – Boiler Room',  'active',    20, 'Primary and secondary superheater sections'),
+('2HBA10BB001', 'Superheater Unit 2',                       'BLR-SH-002',  'Boiler',         'Unit 2 – Boiler Room',  'active',    20, 'Primary and secondary superheater sections'),
+('1HBB10BB001', 'Reheater Unit 1',                          'BLR-RH-001',  'Boiler',         'Unit 1 – Boiler Room',  'active',    20, 'Reheat section for intermediate-pressure steam'),
+('2HBB10BB001', 'Reheater Unit 2',                          'BLR-RH-002',  'Boiler',         'Unit 2 – Boiler Room',  'active',    20, 'Reheat section for intermediate-pressure steam'),
+('1HCA10BB001', 'Economizer Unit 1',                        'BLR-EC-001',  'Boiler',         'Unit 1 – Boiler Room',  'active',    20, 'Feedwater pre-heater using flue gas heat'),
+('2HCA10BB001', 'Economizer Unit 2',                        'BLR-EC-002',  'Boiler',         'Unit 2 – Boiler Room',  'active',    20, 'Feedwater pre-heater using flue gas heat'),
+('1HNA10AC001', 'Air Pre-Heater Unit 1',                    'BLR-APH-001', 'Boiler',         'Unit 1 – Boiler Room',  'active',    18, 'Ljungström rotary air pre-heater'),
+('2HNA10AC001', 'Air Pre-Heater Unit 2',                    'BLR-APH-002', 'Boiler',         'Unit 2 – Boiler Room',  'active',    18, 'Ljungström rotary air pre-heater'),
+('1HFA10HK001', 'Burner Assembly Unit 1',                   'BLR-BN-001',  'Boiler',         'Unit 1 – Boiler Room',  'active',    15, 'Low-NOx burner system, 24 burners in tangential arrangement'),
+('2HFA10HK001', 'Burner Assembly Unit 2',                   'BLR-BN-002',  'Boiler',         'Unit 2 – Boiler Room',  'active',    15, 'Low-NOx burner system, 24 burners in tangential arrangement'),
+
+-- ═══════════════════════════════════════════
+-- TRANSFORMERS
+-- ═══════════════════════════════════════════
+('1BAT10AT001', 'Main Step-Up Transformer T1',              'TRF-MSU-001', 'Transformer',    'Switchyard',            'active',    40, '400 kV, 800 MVA oil-immersed transformer'),
+('2BAT10AT001', 'Main Step-Up Transformer T2',              'TRF-MSU-002', 'Transformer',    'Switchyard',            'active',    40, '400 kV, 800 MVA oil-immersed transformer'),
+('1BAB10AT001', 'Unit Auxiliary Transformer UAT-1',         'TRF-UAT-001', 'Transformer',    'Switchyard',            'active',    35, '6.6 kV auxiliary power transformer, 40 MVA'),
+('2BAB10AT001', 'Unit Auxiliary Transformer UAT-2',         'TRF-UAT-002', 'Transformer',    'Switchyard',            'active',    35, '6.6 kV auxiliary power transformer, 40 MVA'),
+('0BBA10AT001', 'Station Service Transformer SST-1',       'TRF-SST-001', 'Transformer',    'Switchyard',            'active',    35, '415V station service transformer, 5 MVA'),
+('0BBA10AT002', 'Station Service Transformer SST-2',       'TRF-SST-002', 'Transformer',    'Switchyard',            'active',    35, '415V station service transformer, 5 MVA'),
+
+-- ═══════════════════════════════════════════
+-- COOLING SYSTEMS
+-- ═══════════════════════════════════════════
+('1GHC10CT001', 'Cooling Tower CT-1',                       'CT-001',      'Cooling System', 'Cooling Tower',         'active',    20, 'Natural draft hyperbolic cooling tower, 165m height'),
+('2GHC10CT001', 'Cooling Tower CT-2',                       'CT-002',      'Cooling System', 'Cooling Tower',         'active',    20, 'Natural draft hyperbolic cooling tower, 165m height'),
+('1GHC10AP001', 'Circulating Water Pump CWP-1A',           'CWP-1A',      'Cooling System', 'Cooling Tower',         'active',    20, 'Vertical mixed-flow pump, 36000 m³/h'),
+('1GHC10AP002', 'Circulating Water Pump CWP-1B',           'CWP-1B',      'Cooling System', 'Cooling Tower',         'active',    20, 'Vertical mixed-flow pump, 36000 m³/h (standby)'),
+('2GHC10AP001', 'Circulating Water Pump CWP-2A',           'CWP-2A',      'Cooling System', 'Cooling Tower',         'active',    20, 'Vertical mixed-flow pump, 36000 m³/h'),
+('2GHC10AP002', 'Circulating Water Pump CWP-2B',           'CWP-2B',      'Cooling System', 'Cooling Tower',         'active',    20, 'Vertical mixed-flow pump, 36000 m³/h (standby)'),
+('0GHC10AN001', 'Cooling Water Chemical Dosing System',     'CT-CDS-001',  'Cooling System', 'Water Treatment',       'active',    15, 'Chlorination and anti-scaling dosing system'),
+
+-- ═══════════════════════════════════════════
+-- PUMPS
+-- ═══════════════════════════════════════════
+('1LAB10AP001', 'Boiler Feed Pump BFP-1A',                 'BFP-1A',      'Pump',           'Unit 1 – Boiler Room',  'active',    15, 'Turbine-driven boiler feedwater pump, 1000 m³/h'),
+('1LAB10AP002', 'Boiler Feed Pump BFP-1B',                 'BFP-1B',      'Pump',           'Unit 1 – Boiler Room',  'active',    15, 'Motor-driven boiler feedwater pump, 1000 m³/h (standby)'),
+('2LAB10AP001', 'Boiler Feed Pump BFP-2A',                 'BFP-2A',      'Pump',           'Unit 2 – Boiler Room',  'active',    15, 'Turbine-driven boiler feedwater pump, 1000 m³/h'),
+('2LAB10AP002', 'Boiler Feed Pump BFP-2B',                 'BFP-2B',      'Pump',           'Unit 2 – Boiler Room',  'active',    15, 'Motor-driven boiler feedwater pump, 1000 m³/h (standby)'),
+('1LCA10AP001', 'Condensate Extraction Pump CEP-1A',       'CEP-1A',      'Pump',           'Unit 1 – Turbine Hall', 'active',    15, 'Vertical can-type pump, 800 m³/h'),
+('1LCA10AP002', 'Condensate Extraction Pump CEP-1B',       'CEP-1B',      'Pump',           'Unit 1 – Turbine Hall', 'active',    15, 'Vertical can-type pump, 800 m³/h (standby)'),
+('2LCA10AP001', 'Condensate Extraction Pump CEP-2A',       'CEP-2A',      'Pump',           'Unit 2 – Turbine Hall', 'active',    15, 'Vertical can-type pump, 800 m³/h'),
+('2LCA10AP002', 'Condensate Extraction Pump CEP-2B',       'CEP-2B',      'Pump',           'Unit 2 – Turbine Hall', 'active',    15, 'Vertical can-type pump, 800 m³/h (standby)'),
+('1MAD10AP001', 'Lube Oil Pump LOP-1',                     'LOP-001',     'Pump',           'Unit 1 – Turbine Hall', 'active',    12, 'AC motor-driven lube oil pump for turbine bearings'),
+('2MAD10AP001', 'Lube Oil Pump LOP-2',                     'LOP-002',     'Pump',           'Unit 2 – Turbine Hall', 'active',    12, 'AC motor-driven lube oil pump for turbine bearings'),
+('1MAD10AP002', 'Emergency Lube Oil Pump (DC)',             'ELOP-001',    'Pump',           'Unit 1 – Turbine Hall', 'active',    12, 'DC-driven emergency lube oil pump'),
+('1MAD10AP003', 'Jacking Oil Pump JOP-1',                  'JOP-001',     'Pump',           'Unit 1 – Turbine Hall', 'active',    12, 'High-pressure jacking oil pump for turbine turning gear'),
+('0SGA10AP001', 'Fire Water Pump FWP-1',                   'FWP-001',     'Pump',           'Fuel Storage',          'active',    20, 'Diesel-driven fire water pump, 500 m³/h'),
+('0SGA10AP002', 'Fire Water Pump FWP-2 (Jockey)',          'FWP-002',     'Pump',           'Fuel Storage',          'active',    20, 'Electric jockey pump for fire water system'),
+('1HNA20AP001', 'Ash Slurry Pump ASP-1',                   'ASP-001',     'Pump',           'Ash Handling',          'active',    10, 'Heavy-duty slurry pump for bottom ash disposal'),
+('1HNA20AP002', 'Ash Slurry Pump ASP-2',                   'ASP-002',     'Pump',           'Ash Handling',          'active',    10, 'Heavy-duty slurry pump for fly ash disposal'),
+
+-- ═══════════════════════════════════════════
+-- COMPRESSORS
+-- ═══════════════════════════════════════════
+('1HLA10AN001', 'Primary Air Fan PAF-1A',                  'PAF-1A',      'Compressor',     'Unit 1 – Boiler Room',  'active',    18, 'Centrifugal fan for primary air supply to coal mills'),
+('1HLA10AN002', 'Primary Air Fan PAF-1B',                  'PAF-1B',      'Compressor',     'Unit 1 – Boiler Room',  'active',    18, 'Centrifugal fan for primary air supply (standby)'),
+('2HLA10AN001', 'Primary Air Fan PAF-2A',                  'PAF-2A',      'Compressor',     'Unit 2 – Boiler Room',  'active',    18, 'Centrifugal fan for primary air supply to coal mills'),
+('1HLB10AN001', 'Forced Draft Fan FDF-1A',                 'FDF-1A',      'Compressor',     'Unit 1 – Boiler Room',  'active',    18, 'Axial-flow forced draft fan, 600 m³/s'),
+('1HLB10AN002', 'Forced Draft Fan FDF-1B',                 'FDF-1B',      'Compressor',     'Unit 1 – Boiler Room',  'active',    18, 'Axial-flow forced draft fan (standby)'),
+('2HLB10AN001', 'Forced Draft Fan FDF-2A',                 'FDF-2A',      'Compressor',     'Unit 2 – Boiler Room',  'active',    18, 'Axial-flow forced draft fan, 600 m³/s'),
+('1HLC10AN001', 'Induced Draft Fan IDF-1A',                'IDF-1A',      'Compressor',     'Unit 1 – Boiler Room',  'active',    18, 'Centrifugal induced draft fan, 800 m³/s'),
+('1HLC10AN002', 'Induced Draft Fan IDF-1B',                'IDF-1B',      'Compressor',     'Unit 1 – Boiler Room',  'active',    18, 'Centrifugal induced draft fan (standby)'),
+('2HLC10AN001', 'Induced Draft Fan IDF-2A',                'IDF-2A',      'Compressor',     'Unit 2 – Boiler Room',  'active',    18, 'Centrifugal induced draft fan, 800 m³/s'),
+('0PCA10AN001', 'Instrument Air Compressor IAC-1',         'IAC-001',     'Compressor',     'Control Room',          'active',    15, 'Oil-free screw compressor, 10 bar, 50 m³/min'),
+('0PCA10AN002', 'Instrument Air Compressor IAC-2',         'IAC-002',     'Compressor',     'Control Room',          'active',    15, 'Oil-free screw compressor (standby)'),
+('0PCB10AN001', 'Service Air Compressor SAC-1',            'SAC-001',     'Compressor',     'Control Room',          'active',    15, 'Screw compressor for service air, 7 bar'),
+
+-- ═══════════════════════════════════════════
+-- HEAT EXCHANGERS
+-- ═══════════════════════════════════════════
+('1MAK10AC001', 'Main Condenser Unit 1',                   'MC-001',      'Heat Exchanger', 'Unit 1 – Turbine Hall', 'active',    25, 'Surface condenser, 50000 m² heat transfer area'),
+('2MAK10AC001', 'Main Condenser Unit 2',                   'MC-002',      'Heat Exchanger', 'Unit 2 – Turbine Hall', 'active',    25, 'Surface condenser, 50000 m² heat transfer area'),
+('1LAA10AC001', 'LP Feedwater Heater FWH-1',              'FWH-LP-001',  'Heat Exchanger', 'Unit 1 – Turbine Hall', 'active',    20, 'Low-pressure feedwater heater #1'),
+('1LAA10AC002', 'LP Feedwater Heater FWH-2',              'FWH-LP-002',  'Heat Exchanger', 'Unit 1 – Turbine Hall', 'active',    20, 'Low-pressure feedwater heater #2'),
+('1LAA10AC003', 'LP Feedwater Heater FWH-3',              'FWH-LP-003',  'Heat Exchanger', 'Unit 1 – Turbine Hall', 'active',    20, 'Low-pressure feedwater heater #3'),
+('1LAA20AC001', 'HP Feedwater Heater FWH-6',              'FWH-HP-006',  'Heat Exchanger', 'Unit 1 – Boiler Room',  'active',    20, 'High-pressure feedwater heater #6'),
+('1LAA20AC002', 'HP Feedwater Heater FWH-7',              'FWH-HP-007',  'Heat Exchanger', 'Unit 1 – Boiler Room',  'active',    20, 'High-pressure feedwater heater #7'),
+('1LBA10AC001', 'Deaerator Unit 1',                        'DEA-001',     'Heat Exchanger', 'Unit 1 – Boiler Room',  'active',    25, 'Direct-contact deaerator with storage tank, 1200 m³/h'),
+('2LBA10AC001', 'Deaerator Unit 2',                        'DEA-002',     'Heat Exchanger', 'Unit 2 – Boiler Room',  'active',    25, 'Direct-contact deaerator with storage tank, 1200 m³/h'),
+('1MAJ10AC001', 'Gland Steam Condenser GSC-1',            'GSC-001',     'Heat Exchanger', 'Unit 1 – Turbine Hall', 'active',    20, 'Turbine gland steam condenser'),
+('1MAD10AC001', 'Lube Oil Cooler LOC-1',                   'LOC-001',     'Heat Exchanger', 'Unit 1 – Turbine Hall', 'active',    15, 'Shell and tube lube oil cooler'),
+('1MAG10AC001', 'Hydrogen Cooler (Generator) HC-1',        'HC-001',      'Heat Exchanger', 'Unit 1 – Turbine Hall', 'active',    20, 'Generator hydrogen gas cooler'),
+
+-- ═══════════════════════════════════════════
+-- VALVES
+-- ═══════════════════════════════════════════
+('1LBA10AA001', 'Main Steam Stop Valve MSSV-1',            'VLV-MSSV-001','Valve',          'Unit 1 – Turbine Hall', 'active',    20, 'Main steam emergency stop valve, 600°C / 250 bar'),
+('2LBA10AA001', 'Main Steam Stop Valve MSSV-2',            'VLV-MSSV-002','Valve',          'Unit 2 – Turbine Hall', 'active',    20, 'Main steam emergency stop valve, 600°C / 250 bar'),
+('1MAA10AA001', 'Control Valve CV-1 (HP Turbine)',         'VLV-CV-001',  'Valve',          'Unit 1 – Turbine Hall', 'active',    15, 'HP turbine steam control valve'),
+('2MAA10AA001', 'Control Valve CV-2 (HP Turbine)',         'VLV-CV-002',  'Valve',          'Unit 2 – Turbine Hall', 'active',    15, 'HP turbine steam control valve'),
+('1MAB10AA001', 'Reheat Stop Valve RSV-1',                'VLV-RSV-001', 'Valve',          'Unit 1 – Turbine Hall', 'active',    20, 'Reheat steam stop valve'),
+('1MAB10AA002', 'Reheat Intercept Valve RIV-1',            'VLV-RIV-001', 'Valve',          'Unit 1 – Turbine Hall', 'active',    20, 'Reheat intercept valve for overspeed protection'),
+('1HAA10AA001', 'Boiler Safety Valve SV-1A',              'VLV-SV-1A',   'Valve',          'Unit 1 – Boiler Room',  'active',    15, 'Spring-loaded safety valve, 270 bar set pressure'),
+('1HAA10AA002', 'Boiler Safety Valve SV-1B',              'VLV-SV-1B',   'Valve',          'Unit 1 – Boiler Room',  'active',    15, 'Spring-loaded safety valve, 270 bar set pressure'),
+('2HAA10AA001', 'Boiler Safety Valve SV-2A',              'VLV-SV-2A',   'Valve',          'Unit 2 – Boiler Room',  'active',    15, 'Spring-loaded safety valve, 270 bar set pressure'),
+('1LAB10AA001', 'Feedwater Regulating Valve FRV-1',        'VLV-FRV-001', 'Valve',          'Unit 1 – Boiler Room',  'active',    15, 'Boiler feedwater regulation valve, pneumatic actuated'),
+('1HBA10AA001', 'Attemperator Spray Valve ATV-1',          'VLV-ATV-001', 'Valve',          'Unit 1 – Boiler Room',  'active',    15, 'Superheater attemperator spray valve'),
+
+-- ═══════════════════════════════════════════
+-- ELECTRICAL PANELS
+-- ═══════════════════════════════════════════
+('1BMA10GH001', 'MCC Panel Unit 1',                        'EP-MCC-001',  'Electrical Panel','Control Room',          'active',    30, 'Motor control center for Unit 1 auxiliaries'),
+('2BMA10GH001', 'MCC Panel Unit 2',                        'EP-MCC-002',  'Electrical Panel','Control Room',          'active',    30, 'Motor control center for Unit 2 auxiliaries'),
+('1BBA10GH001', '6.6 kV Switchgear SWG-1',                'EP-SWG-001',  'Electrical Panel','Switchyard',            'active',    30, '6.6 kV vacuum circuit breaker switchgear, Unit 1'),
+('2BBA10GH001', '6.6 kV Switchgear SWG-2',                'EP-SWG-002',  'Electrical Panel','Switchyard',            'active',    30, '6.6 kV vacuum circuit breaker switchgear, Unit 2'),
+('0BCA10GH001', '415V Distribution Board DB-1',            'EP-DB-001',   'Electrical Panel','Control Room',          'active',    25, '415V main distribution board'),
+('0BDA10GH001', 'DC Distribution Panel 220V',              'EP-DC-001',   'Electrical Panel','Control Room',          'active',    25, '220V DC distribution panel with battery charger'),
+('0BDA10GS001', 'Battery Bank 220V DC',                    'EP-BAT-001',  'Electrical Panel','Control Room',          'active',    10, '220V DC battery bank, 1000 Ah lead-acid'),
+('0BDA10GT001', 'UPS System 120 kVA',                      'EP-UPS-001',  'Electrical Panel','Control Room',          'active',    10, 'Uninterruptible power supply for critical controls'),
+('1BBA10GC001', 'Generator Protection Relay Panel',        'EP-GPR-001',  'Electrical Panel','Control Room',          'active',    20, 'Numerical generator protection relay panel'),
+('0BBA10GH002', 'Bus Coupler Panel',                       'EP-BCP-001',  'Electrical Panel','Switchyard',            'active',    30, '400 kV bus coupler with SF6 circuit breaker'),
+
+-- ═══════════════════════════════════════════
+-- CONTROL SYSTEMS
+-- ═══════════════════════════════════════════
+('0CJA10CK001', 'DCS System – Main Controller',            'DCS-MC-001',  'Control System', 'Control Room',          'active',    15, 'ABB Symphony Plus distributed control system'),
+('0CJA10CK002', 'DCS Operator Workstation OWS-1',          'DCS-OWS-001', 'Control System', 'Control Room',          'active',    8,  'Operator workstation with dual monitors'),
+('0CJA10CK003', 'DCS Operator Workstation OWS-2',          'DCS-OWS-002', 'Control System', 'Control Room',          'active',    8,  'Operator workstation with dual monitors'),
+('0CJA10CK004', 'DCS Engineering Workstation EWS',         'DCS-EWS-001', 'Control System', 'Control Room',          'active',    8,  'Engineering workstation for configuration'),
+('0CJA10CK005', 'DCS Historian Server',                    'DCS-HIS-001', 'Control System', 'Control Room',          'active',    8,  'Process data historian, 1-year rolling storage'),
+('1MAE10CK001', 'Turbine Control System (EHC)',            'TCS-EHC-001', 'Control System', 'Unit 1 – Turbine Hall', 'active',    15, 'Electro-hydraulic turbine governor and protection'),
+('2MAE10CK001', 'Turbine Control System (EHC) U2',         'TCS-EHC-002', 'Control System', 'Unit 2 – Turbine Hall', 'active',    15, 'Electro-hydraulic turbine governor and protection'),
+('1HFB10CK001', 'Burner Management System BMS-1',          'BMS-001',     'Control System', 'Unit 1 – Boiler Room',  'active',    15, 'SIL-2 rated burner management system'),
+('2HFB10CK001', 'Burner Management System BMS-2',          'BMS-002',     'Control System', 'Unit 2 – Boiler Room',  'active',    15, 'SIL-2 rated burner management system'),
+('1HJA10CK001', 'CEMS – Emissions Monitoring',             'CEMS-001',    'Control System', 'Unit 1 – Boiler Room',  'active',    12, 'Continuous emissions monitoring system (SO2, NOx, PM)'),
+('2HJA10CK001', 'CEMS – Emissions Monitoring U2',          'CEMS-002',    'Control System', 'Unit 2 – Boiler Room',  'active',    12, 'Continuous emissions monitoring system (SO2, NOx, PM)'),
+('0SFA10CK001', 'Fire Alarm & Detection System',           'FADS-001',    'Control System', 'Control Room',          'active',    15, 'Addressable fire alarm panel with smoke/heat detectors'),
+('0SFB10CK001', 'CCTV Surveillance System',                'CCTV-001',    'Control System', 'Control Room',          'active',    10, '64-channel NVR with IP cameras, plant-wide coverage'),
+
+-- ═══════════════════════════════════════════
+-- COAL HANDLING
+-- ═══════════════════════════════════════════
+('0CFA10AT001', 'Coal Crusher CC-1',                       'CC-001',      'Other',          'Coal Handling',         'active',    12, 'Ring granulator type coal crusher, 1200 TPH'),
+('0CFA10AT002', 'Coal Crusher CC-2',                       'CC-002',      'Other',          'Coal Handling',         'active',    12, 'Ring granulator type coal crusher, 1200 TPH'),
+('0CFA20AT001', 'Stacker Reclaimer SR-1',                  'SR-001',      'Other',          'Coal Handling',         'active',    20, 'Boom-type stacker reclaimer, 2500 TPH stacking capacity'),
+('0CFA30AT001', 'Coal Conveyor Belt CB-1',                 'CB-001',      'Other',          'Coal Handling',         'active',    15, 'Main belt conveyor, 1800mm width, 2000 TPH'),
+('0CFA30AT002', 'Coal Conveyor Belt CB-2',                 'CB-002',      'Other',          'Coal Handling',         'active',    15, 'Transfer conveyor to bunker, 1400mm width'),
+('1HFC10AT001', 'Coal Mill / Pulverizer CM-1A',            'CM-1A',       'Other',          'Unit 1 – Boiler Room',  'active',    15, 'Bowl mill pulverizer, 80 TPH capacity'),
+('1HFC10AT002', 'Coal Mill / Pulverizer CM-1B',            'CM-1B',       'Other',          'Unit 1 – Boiler Room',  'active',    15, 'Bowl mill pulverizer, 80 TPH capacity'),
+('1HFC10AT003', 'Coal Mill / Pulverizer CM-1C',            'CM-1C',       'Other',          'Unit 1 – Boiler Room',  'active',    15, 'Bowl mill pulverizer (standby)'),
+('2HFC10AT001', 'Coal Mill / Pulverizer CM-2A',            'CM-2A',       'Other',          'Unit 2 – Boiler Room',  'active',    15, 'Bowl mill pulverizer, 80 TPH capacity'),
+('2HFC10AT002', 'Coal Mill / Pulverizer CM-2B',            'CM-2B',       'Other',          'Unit 2 – Boiler Room',  'active',    15, 'Bowl mill pulverizer, 80 TPH capacity'),
+('0CFA40AT001', 'Magnetic Separator MS-1',                 'MS-001',      'Other',          'Coal Handling',         'active',    15, 'Overhead permanent magnet separator'),
+('0CFA50AT001', 'Coal Sampling System CSS-1',              'CSS-001',     'Other',          'Coal Handling',         'active',    12, 'Automatic coal sampling & preparation system'),
+
+-- ═══════════════════════════════════════════
+-- ASH HANDLING
+-- ═══════════════════════════════════════════
+('1HNA10AT001', 'Electrostatic Precipitator ESP-1',        'ESP-001',     'Other',          'Unit 1 – Boiler Room',  'active',    25, '4-field ESP, 99.9% collection efficiency'),
+('2HNA10AT001', 'Electrostatic Precipitator ESP-2',        'ESP-002',     'Other',          'Unit 2 – Boiler Room',  'active',    25, '4-field ESP, 99.9% collection efficiency'),
+('1HNA20AT001', 'Bottom Ash Hopper BAH-1',                'BAH-001',     'Other',          'Ash Handling',          'active',    20, 'Submerged scraper conveyor type'),
+('2HNA20AT001', 'Bottom Ash Hopper BAH-2',                'BAH-002',     'Other',          'Ash Handling',          'active',    20, 'Submerged scraper conveyor type'),
+('0HNA30AT001', 'Fly Ash Silo FAS-1',                     'FAS-001',     'Other',          'Ash Handling',          'active',    25, 'Fly ash storage silo, 5000 MT capacity'),
+('0HNA40AT001', 'Ash Disposal Pipeline ADP-1',            'ADP-001',     'Other',          'Ash Handling',          'active',    15, 'HDPE-lined ash slurry pipeline to ash pond'),
+
+-- ═══════════════════════════════════════════
+-- WATER TREATMENT
+-- ═══════════════════════════════════════════
+('0GCA10AT001', 'DM Water Plant',                          'WTP-DM-001',  'Other',          'Water Treatment',       'active',    20, 'Demineralized water plant, 200 m³/h capacity'),
+('0GCA20AT001', 'RO Water Treatment System',              'WTP-RO-001',  'Other',          'Water Treatment',       'active',    15, 'Reverse osmosis system, 150 m³/h'),
+('0GCB10AT001', 'Mixed Bed Polisher MBP-1',               'WTP-MBP-001', 'Other',          'Water Treatment',       'active',    15, 'Condensate polishing mixed bed ion exchanger'),
+('0GCC10AT001', 'Chemical Dosing System – Boiler',         'WTP-CDS-001', 'Other',          'Water Treatment',       'active',    12, 'Phosphate and hydrazine dosing for boiler water chemistry'),
+('0GCD10AT001', 'Effluent Treatment Plant ETP',            'WTP-ETP-001', 'Other',          'Water Treatment',       'active',    20, 'Zero liquid discharge effluent treatment'),
+('0GCE10AT001', 'Raw Water Clarifier',                     'WTP-CL-001',  'Other',          'Water Treatment',       'active',    25, 'Lamella clarifier for raw water treatment'),
+
+-- ═══════════════════════════════════════════
+-- FUEL STORAGE
+-- ═══════════════════════════════════════════
+('0HEA10AT001', 'Fuel Oil Storage Tank FOT-1',             'FOT-001',     'Other',          'Fuel Storage',          'active',    30, 'Light diesel oil storage tank, 500 KL'),
+('0HEA10AT002', 'Fuel Oil Storage Tank FOT-2',             'FOT-002',     'Other',          'Fuel Storage',          'active',    30, 'Heavy fuel oil storage tank, 1000 KL'),
+('0HEB10AT001', 'Fuel Oil Heater FOH-1',                   'FOH-001',     'Other',          'Fuel Storage',          'active',    15, 'Steam-heated HFO heater for combustion viscosity'),
+('0HEB10AP001', 'Fuel Oil Pump Station FOPS-1',            'FOPS-001',    'Other',          'Fuel Storage',          'active',    15, 'HFO transfer and atomization pump station'),
+
+-- ═══════════════════════════════════════════
+-- MISCELLANEOUS / AUXILIARY
+-- ═══════════════════════════════════════════
+('1XKA10AT001', 'Overhead Crane – Turbine Hall (100T)',    'OHC-TH-001',  'Other',          'Unit 1 – Turbine Hall', 'active',    30, '100-ton EOT crane for turbine maintenance'),
+('1XKA20AT001', 'Overhead Crane – Boiler House (50T)',     'OHC-BH-001',  'Other',          'Unit 1 – Boiler Room',  'active',    30, '50-ton EOT crane'),
+('0PCA20AT001', 'Compressed Air Receiver Tank',            'CA-TANK-001', 'Other',          'Control Room',          'active',    25, '10 m³ compressed air receiver at 10 bar'),
+('0MKA10AT001', 'Hydrogen Generation Plant',              'HGP-001',     'Other',          'Control Room',          'active',    15, 'Electrolyzer for generator hydrogen supply, 99.999% purity'),
+('1MAF10AT001', 'Turbine Turning Gear TG-1',              'TG-001',      'Other',          'Unit 1 – Turbine Hall', 'active',    20, 'Electric motor-driven turning gear, 3 RPM'),
+('2MAF10AT001', 'Turbine Turning Gear TG-2',              'TG-002',      'Other',          'Unit 2 – Turbine Hall', 'active',    20, 'Electric motor-driven turning gear, 3 RPM'),
+('1MAH10AA001', 'HP/LP Bypass System Unit 1',             'BYP-001',     'Other',          'Unit 1 – Turbine Hall', 'active',    20, 'Turbine bypass system for startup and trip conditions'),
+('2MAH10AA001', 'HP/LP Bypass System Unit 2',             'BYP-002',     'Other',          'Unit 2 – Turbine Hall', 'active',    20, 'Turbine bypass system for startup and trip conditions')
+
+ON CONFLICT (serial_number) DO NOTHING;

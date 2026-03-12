@@ -2,10 +2,13 @@ import mongoose from "mongoose";
 
 const assetSchema = new mongoose.Schema(
   {
+    kksCode: { type: String, trim: true, unique: true, sparse: true },
     name: { type: String, required: true, trim: true },
     serialNumber: { type: String, trim: true, unique: true, sparse: true },
-    category: { type: String, required: true, trim: true },
+    category: { type: String, trim: true },
     location: { type: String, required: true, trim: true },
+    assetType: { type: String, enum: ['PRODUCTION', 'TOOL'], trim: true },
+    modelType: { type: String, trim: true },
     status: {
       type: String,
       enum: ["active", "maintenance", "retired", "inactive"],

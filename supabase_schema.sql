@@ -7,10 +7,13 @@
 -- 1. Assets
 create table if not exists assets (
   id uuid default gen_random_uuid() primary key,
+  kks_code text unique,
   name text not null,
-  serial_number text unique,
-  category text not null,
+  serial_number text,
+  category text,
   location text not null,
+  asset_type text check (asset_type in ('PRODUCTION','TOOL')),
+  model_type text,
   status text not null default 'active'
     check (status in ('active','maintenance','retired','inactive')),
   purchase_date timestamptz,

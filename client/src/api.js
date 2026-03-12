@@ -2,7 +2,10 @@ import { supabase } from './supabaseClient';
 
 /* ─── Helper: snake_case ↔ camelCase mapping ─── */
 const snakeToMap = {
+  kks_code: 'kksCode',
   serial_number: 'serialNumber',
+  asset_type: 'assetType',
+  model_type: 'modelType',
   purchase_date: 'purchaseDate',
   install_date: 'installDate',
   useful_life_years: 'usefulLifeYears',
