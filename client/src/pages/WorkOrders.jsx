@@ -14,7 +14,7 @@ export default function WorkOrders() {
 
   const load = () => Promise.all([
     api.workOrders.list(100).catch(() => ({ data: [] })),
-    api.assets.list(1000).catch(() => ({ data: [] })),
+    api.assets.listAll().catch(() => ({ data: [] })),
   ]).then(([wo, a]) => { setItems(wo.data); setAssets(a.data); setLoading(false); });
 
   useEffect(() => { load(); }, []);
@@ -46,12 +46,13 @@ export default function WorkOrders() {
         {loading ? <div className="loading">Loading...</div> :
         items.length === 0 ? <div className="empty">No work orders yet.</div> :
         <table>
-          <thead><tr><th>Title</th><th>Asset</th><th>Assigned To</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Title</th><th>Asset</th><th>KKS Code</th><th>Assigned To</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {items.map(w => (
               <tr key={w.id}>
                 <td><strong>{w.title}</strong></td>
                 <td>{w.assetId?.name || '—'}</td>
+                <td>{w.assetId?.kksCode || '—'}</td>
                 <td>{w.assignedTo || '—'}</td>
                 <td><span className={`badge ${priorityBadge[w.priority]}`}>{w.priority}</span></td>
                 <td><span className={`badge ${statusBadge[w.status]}`}>{w.status}</span></td>
@@ -72,7 +73,7 @@ export default function WorkOrders() {
             <div className="form-group"><label>Asset *</label>
               <select value={form.assetId} onChange={e => set('assetId', e.target.value)}>
                 <option value="">Select asset...</option>
-                {assets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                {assets.map(a => <option key={a.id} value={a.id}>{a.kksCode ? `${a.kksCode} — ${a.name}` : a.name}</option>)}
               </select>
             </div>
             <div className="form-row">
