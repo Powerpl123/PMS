@@ -112,6 +112,25 @@ function tableApi(table) {
       return { data: data.map(toCamel), total: count ?? data.length };
     },
 
+    // Fetch ALL rows by paginating through in batches of 1000
+    async listAll() {
+      const PAGE = 1000;
+      let all = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from(table)
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw new Error(error.message);
+        all = all.concat(data);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      return { data: all.map(toCamel), total: all.length };
+    },
+
     async create(body) {
       const { data, error } = await supabase
         .from(table)
@@ -143,12 +162,42 @@ function tableApi(table) {
   };
 }
 
+/* ─── Assets with server-side search & pagination ─── */
+const assetsApi = {
+  ...tableApi('assets'),
+
+  // Server-side search + paginated fetch — instant, no client-side loading of all rows
+  async search({ query = '', typeFilter = '', page = 1, perPage = 50 } = {}) {
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+    let q = supabase
+      .from('assets')
+      .select('*', { count: 'exact' })
+      .order('kks_code', { ascending: true })
+      .range(from, to);
+
+    // Full-text ilike search across kks_code, name, location, serial_number, model_type
+    if (query) {
+      q = q.or(
+        `kks_code.ilike.%${query}%,name.ilike.%${query}%,location.ilike.%${query}%,serial_number.ilike.%${query}%,model_type.ilike.%${query}%`
+      );
+    }
+    if (typeFilter) {
+      q = q.eq('asset_type', typeFilter);
+    }
+
+    const { data, error, count } = await q;
+    if (error) throw new Error(error.message);
+    return { data: data.map(toCamel), total: count ?? 0 };
+  },
+};
+
 /* ─── Work Orders with asset join ─── */
 const workOrdersApi = {
   async list(limit = 100) {
     const { data, error, count } = await supabase
       .from('work_orders')
-      .select('*, assets(name)', { count: 'exact' })
+      .select('*, assets(name, kks_code)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw new Error(error.message);
@@ -157,7 +206,7 @@ const workOrdersApi = {
         const c = toCamel(row);
         // Flatten the joined asset name into assetId object shape pages expect
         if (row.assets) {
-          c.assetId = { _id: row.asset_id, id: row.asset_id, name: row.assets.name };
+          c.assetId = { _id: row.asset_id, id: row.asset_id, name: row.assets.name, kksCode: row.assets.kks_code };
         }
         delete c.assets;
         return c;
@@ -175,7 +224,7 @@ const workRequestsApi = {
   async list(limit = 100) {
     const { data, error, count } = await supabase
       .from('work_requests')
-      .select('*, assets(name)', { count: 'exact' })
+      .select('*, assets(name, kks_code)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw new Error(error.message);
@@ -183,7 +232,7 @@ const workRequestsApi = {
       data: data.map((row) => {
         const c = toCamel(row);
         if (row.assets) {
-          c.assetId = { _id: row.asset_id, id: row.asset_id, name: row.assets.name };
+          c.assetId = { _id: row.asset_id, id: row.asset_id, name: row.assets.name, kksCode: row.assets.kks_code };
         }
         delete c.assets;
         return c;
@@ -572,7 +621,7 @@ const generationUnitsApi = {
 
 /* ─── Exported API object ─── */
 export const api = {
-  assets: tableApi('assets'),
+  assets: assetsApi,
   workOrders: workOrdersApi,
   workRequests: workRequestsApi,
   workPermits: workPermitsApi,
