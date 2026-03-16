@@ -10,6 +10,7 @@ const emptyRequest = {
   title: '',
   description: '',
   assetId: '',
+  kksCode: '',
   requestedBy: '',
   assignedToName: '',
   department: '',
@@ -90,6 +91,7 @@ export default function WorkRequests() {
       title: item.title,
       description: item.description || '',
       assetId: item.assetId?.id || item.assetId || '',
+      kksCode: item.kksCode || '',
       requestedBy: item.requestedBy || '',
       assignedToName: item.assignedToName || '',
       department: item.department || '',
@@ -334,6 +336,7 @@ export default function WorkRequests() {
                   <th>Title</th>
                   <th>Type</th>
                   <th>Asset</th>
+                  <th>KKS Code</th>
                   <th>Assigned To</th>
                   <th>Department</th>
                   <th>Priority</th>
@@ -348,6 +351,7 @@ export default function WorkRequests() {
                     <td><strong>{w.title}</strong></td>
                     <td><span className={`badge ${typeBadge[w.workType] || 'badge-gray'}`}>{w.workType}</span></td>
                     <td>{w.assetId?.name || '—'}</td>
+                    <td>{w.kksCode || '—'}</td>
                     <td>
                       {w.assignedToName || '—'}
                     </td>
@@ -456,17 +460,21 @@ export default function WorkRequests() {
                   const selectedId = e.target.value;
                   set('assetId', selectedId);
                   const selected = assets.find(a => a.id === selectedId);
-                  if (selected?.location) set('location', selected.location);
+                  if (selected?.kksCode) set('kksCode', selected.kksCode);
                 }}>
                   <option value="">Select asset...</option>
                   {assets.length === 0 && <option disabled>No assets found</option>}
                   {assets.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name}{a.location ? ` — ${a.location}` : ''}{a.category ? ` (${a.category})` : ''}
+                      {a.name}{a.location ? ` — ${a.location}` : ''}{a.category ? ` (${a.category})` : ''}{a.kksCode ? ` [${a.kksCode}]` : ''}
                     </option>
                   ))}
                 </select>
               </div>
+            </div>
+            <div className="form-group">
+              <label>KKS Code</label>
+              <input value={form.kksCode} onChange={(e) => set('kksCode', e.target.value)} placeholder="Auto-filled from asset" />
             </div>
             <div className="form-group">
               <label>Assign To</label>

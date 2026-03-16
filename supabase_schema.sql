@@ -114,6 +114,7 @@ create table if not exists work_requests (
   title text not null,
   description text,
   asset_id uuid references assets(id) on delete set null,
+  kks_code text,
   requested_by text,
   assigned_to_name text,
   assigned_to_email text,

@@ -175,7 +175,7 @@ const workRequestsApi = {
   async list(limit = 100) {
     const { data, error, count } = await supabase
       .from('work_requests')
-      .select('*, assets(name)', { count: 'exact' })
+      .select('*, assets(name, kks_code)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw new Error(error.message);
@@ -183,7 +183,7 @@ const workRequestsApi = {
       data: data.map((row) => {
         const c = toCamel(row);
         if (row.assets) {
-          c.assetId = { _id: row.asset_id, id: row.asset_id, name: row.assets.name };
+          c.assetId = { _id: row.asset_id, id: row.asset_id, name: row.assets.name, kksCode: row.assets.kks_code };
         }
         delete c.assets;
         return c;

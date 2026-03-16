@@ -22,7 +22,7 @@ app.use("/api", routes);
 /* Serve React build in production */
 const clientDist = path.join(__dirname, "..", "client", "dist");
 app.use(express.static(clientDist));
-app.get("*", (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(clientDist, "index.html"));
 });
 
