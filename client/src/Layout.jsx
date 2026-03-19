@@ -20,16 +20,6 @@ const powerLinks = [
   { to: '/protection-safety', label: 'Protection & Safety', icon: '🔒' },
 ];
 
-const operationLinks = [
-  { to: '/sensor-config', label: 'Sensor Tags', icon: '🔗' },
-];
-
-const analyticsLinks = [
-  { to: '/predictive', label: 'Failure Prediction', icon: '🧠' },
-  { to: '/reports', label: 'Reports', icon: '📊' },
-  { to: '/trending', label: 'Sensor Trending', icon: '📈' },
-];
-
 const adminLinks = [
   { to: '/users', label: 'User Management', icon: '👥' },
 ];
@@ -54,17 +44,15 @@ export default function Layout() {
     <div className="app">
       <nav className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-icon">⚡</div>
+          <img src="/hqpower-logo.svg" alt="HQ Power" className="brand-logo" />
           <div className="brand-text">
-            <h2>PowerPlant</h2>
+            <h2>HQ Power</h2>
             <small>Maintenance System</small>
           </div>
         </div>
         <div className="sidebar-nav">
           <NavSection title="Overview" links={mainLinks} />
           <NavSection title="Power Generation" links={powerLinks} />
-          <NavSection title="Operations" links={operationLinks} />
-          <NavSection title="Analytics" links={analyticsLinks} />
           <NavSection title="Administration" links={adminLinks} />
         </div>
         <div className="sidebar-footer">
