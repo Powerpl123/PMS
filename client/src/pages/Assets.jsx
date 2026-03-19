@@ -70,18 +70,18 @@ export default function Assets() {
 
   return (
     <div>
-      <div className="page-header">
-        <div><h1>🏗️ Plant Assets</h1><div className="subtitle">Turbines, generators, boilers & equipment — {total} total</div></div>
-        <button className="btn btn-primary" onClick={openNew}>+ Register Asset</button>
+      <div className="page-header" style={{ background: 'linear-gradient(135deg, #004E89 0%, #1a5099 100%)', color: '#FFFFFF', padding: '2rem', borderRadius: '8px', marginBottom: '2rem', boxShadow: '0 8px 24px rgba(255, 184, 28, 0.15)' }}>
+        <div><h1 style={{ fontSize: '2.2rem', marginBottom: '0.5rem', textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>⚡ Plant Assets</h1><div className="subtitle" style={{ fontSize: '1rem', opacity: 0.9, fontWeight: '300' }}>Turbines, generators, boilers & equipment — {total} total assets registered</div></div>
+        <button className="btn btn-primary" onClick={openNew} style={{ marginTop: '1rem', fontSize: '1rem', fontWeight: '600' }}>⚙️ Register New Asset</button>
       </div>
 
-      <div className="card" style={{marginBottom:'1rem',display:'flex',gap:'0.75rem',flexWrap:'wrap',alignItems:'center'}}>
-        <input value={search} onChange={e => handleSearch(e.target.value)} placeholder="Search KKS, name, location, serial, model…" style={{flex:'1',minWidth:'200px'}} />
-        <select value={typeFilter} onChange={e => handleTypeFilter(e.target.value)} style={{width:'160px'}}>
+      <div className="card" style={{marginBottom:'1.5rem',display:'flex',gap:'1rem',flexWrap:'wrap',alignItems:'center',background:'#1c1c1c',border:'2px solid #383838',boxShadow:'0 4px 12px rgba(0,0,0,0.3)'}}>
+        <input value={search} onChange={e => handleSearch(e.target.value)} placeholder="Search KKS, name, location, serial, model…" style={{flex:'1',minWidth:'250px',background:'#151515',border:'1px solid #FFB81C',color:'#FFFFFF',padding:'0.75rem 1rem',borderRadius:'6px'}} />
+        <select value={typeFilter} onChange={e => handleTypeFilter(e.target.value)} style={{width:'180px',background:'#151515',border:'1px solid #FFB81C',color:'#FFFFFF',padding:'0.75rem 1rem',borderRadius:'6px'}}>
           <option value="">All Types</option>
           {assetTypes.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <span style={{color:'var(--text-muted)',fontSize:'0.9em'}}>{total} results</span>
+        <span style={{color:'#FFB81C',fontSize:'1rem',fontWeight:'700',padding:'0.5rem 1rem',background:'rgba(255,184,28,0.1)',borderRadius:'6px',border:'1px solid rgba(255,184,28,0.3)',boxShadow:'0 0 8px rgba(255,184,28,0.2)'}}>{total} total</span>
       </div>
 
       <div className="card">
@@ -92,28 +92,28 @@ export default function Assets() {
           <thead><tr><th>KKS Code</th><th>Name</th><th>Asset Type</th><th>Model Type</th><th>Category</th><th>Location</th><th>Serial Number</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {items.map(a => (
-              <tr key={a.id}>
-                <td><code style={{fontSize:'0.85em',background:'var(--bg-secondary)',padding:'2px 6px',borderRadius:'4px'}}>{a.kksCode || '—'}</code></td>
-                <td><strong>{a.name}</strong></td>
-                <td>{a.assetType || '—'}</td>
-                <td>{a.modelType || '—'}</td>
-                <td>{a.category || '—'}</td>
-                <td>{a.location}</td>
-                <td>{a.serialNumber || '—'}</td>
+              <tr key={a.id} style={{ borderLeft: '3px solid transparent' }}>
+                <td style={{ borderLeft: '3px solid #FFB81C', paddingLeft: '0.8rem' }}><code style={{fontSize:'0.85em',background:'#1c1c1c',padding:'0.5rem 0.75rem',borderRadius:'4px',color:'#FFD54F',border:'1px solid #383838',fontWeight:'600',letterSpacing:'0.3px',display:'inline-block',boxShadow:'0 0 6px rgba(255,184,28,0.2)'}}>{a.kksCode || '—'}</code></td>
+                <td style={{fontWeight:'700',color:'#FFFFFF'}}><strong>{a.name}</strong></td>
+                <td style={{color:'#E8E8E8'}}>{a.assetType ? <span style={{background:'rgba(0,217,255,0.2)',padding:'0.3rem 0.6rem',borderRadius:'4px',border:'1px solid rgba(0,217,255,0.5)',color:'#4DD0FF',fontSize:'0.8rem',fontWeight:'600'}}>{a.assetType}</span> : '—'}</td>
+                <td style={{color:'#A0A0A0'}}>{a.modelType || '—'}</td>
+                <td>{a.category ? <span style={{background:'rgba(255,140,0,0.2)',padding:'0.3rem 0.6rem',borderRadius:'4px',border:'1px solid rgba(255,140,0,0.5)',color:'#FFB74D',fontSize:'0.8rem',fontWeight:'600'}}>{a.category}</span> : <span style={{color:'#A0A0A0'}}>—</span>}</td>
+                <td style={{color:'#E8E8E8'}}>{a.location}</td>
+                <td style={{color:'#A0A0A0',fontSize:'0.85em'}}>{a.serialNumber || '—'}</td>
                 <td><span className={`badge ${statusBadge[a.status]}`}>{a.status}</span></td>
-                <td>
-                  <button className="btn btn-secondary btn-sm" onClick={() => openEdit(a)}>Edit</button>{' '}
-                  <button className="btn btn-danger btn-sm" onClick={() => remove(a.id)}>Delete</button>
+                <td style={{gap:'0.5rem',display:'flex'}}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => openEdit(a)} style={{fontSize:'0.75rem',padding:'0.4rem 0.8rem'}}>✏️ Edit</button>{' '}
+                  <button className="btn btn-danger btn-sm" onClick={() => remove(a.id)} style={{fontSize:'0.75rem',padding:'0.4rem 0.8rem'}}>🗑️ Delete</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',marginTop:'0.5rem',borderTop:'1px solid var(--border)'}}>
-          <span style={{fontSize:'0.9em',color:'var(--text-muted)'}}>Page {page} of {totalPages}</span>
-          <div style={{display:'flex',gap:'0.5rem'}}>
-            <button className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => handlePage(page - 1)}>← Prev</button>
-            <button className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => handlePage(page + 1)}>Next →</button>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'1.25rem 0',marginTop:'1rem',borderTop:'2px solid #FFB81C',gap:'1rem'}}>
+          <span style={{fontSize:'0.95rem',color:'#FFB81C',fontWeight:'600',textShadow:'0 0 6px rgba(255,184,28,0.2)'}}>Page {page} of {totalPages}</span>
+          <div style={{display:'flex',gap:'0.75rem'}}>
+            <button className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => handlePage(page - 1)} style={{background: page <= 1 ? '#383838' : '#1c1c1c', color: page <= 1 ? '#A0A0A0' : '#FFFFFF', border: '1px solid #383838',cursor: page <= 1 ? 'not-allowed' : 'pointer'}}>← Previous</button>
+            <button className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => handlePage(page + 1)} style={{background: page >= totalPages ? '#383838' : '#1c1c1c', color: page >= totalPages ? '#A0A0A0' : '#FFFFFF', border: '1px solid #383838', cursor: page >= totalPages ? 'not-allowed' : 'pointer'}}>Next →</button>
           </div>
         </div>
         </>}

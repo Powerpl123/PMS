@@ -5,6 +5,7 @@ import {
   generatePermitNumber,
   printWorkPermit,
 } from '../utils/workPermit';
+import PhotoAttachments from '../components/PhotoAttachments';
 
 const emptyRequest = {
   title: '',
@@ -37,6 +38,7 @@ const emptyPermit = {
 
 const priorityBadge = { low: 'badge-gray', medium: 'badge-blue', high: 'badge-yellow', critical: 'badge-red' };
 const statusBadge = { pending: 'badge-orange', approved: 'badge-blue', 'in-progress': 'badge-yellow', completed: 'badge-green', rejected: 'badge-red', cancelled: 'badge-gray' };
+const statusLabel = { pending: 'Waiting for Approval', approved: 'Approved', 'in-progress': 'In Progress', completed: 'Completed', rejected: 'Rejected', cancelled: 'Cancelled' };
 const typeBadge = { corrective: 'badge-red', preventive: 'badge-blue', inspection: 'badge-purple', emergency: 'badge-red' };
 
 const PPE_OPTIONS = ['Hard Hat', 'Safety Glasses', 'Steel-toe Boots', 'Gloves', 'Ear Protection', 'High-vis Vest', 'Face Shield', 'Respiratory Mask', 'Fall Harness', 'Fire-resistant Clothing'];
@@ -50,11 +52,13 @@ export default function WorkRequests() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);       // null | 'new' | item
   const [permitModal, setPermitModal] = useState(null); // null | requestItem
+  const [photoModal, setPhotoModal] = useState(null); // null | requestItem (for photo attachments)
   const [form, setForm] = useState(emptyRequest);
   const [permitForm, setPermitForm] = useState(emptyPermit);
   const [sending, setSending] = useState(false);
   const [tab, setTab] = useState('requests');
   const [toast, setToast] = useState(null);
+  const [attachmentCounts, setAttachmentCounts] = useState({}); // Track attachment counts
 
   function showToast(msg, type = 'success') {
     setToast({ msg, type });
@@ -73,7 +77,23 @@ export default function WorkRequests() {
       setPermits(wp.data);
       setUsersList(u.data.filter(p => p.active));
       setLoading(false);
+      // Load attachment counts for all work requests
+      loadAttachmentCounts(wr.data);
     });
+
+  // Load attachment counts for all work requests
+  async function loadAttachmentCounts(workRequests) {
+    const counts = {};
+    try {
+      for (const wr of workRequests) {
+        const result = await api.workRequestAttachments.list(wr.id, 1).catch(() => ({ data: [] }));
+        counts[wr.id] = result.data.length;
+      }
+      setAttachmentCounts(counts);
+    } catch (err) {
+      console.warn('Failed to load attachment counts:', err.message);
+    }
+  }
 
   useEffect(() => { load(); }, []);
 
@@ -120,15 +140,15 @@ export default function WorkRequests() {
         savedRequest = await api.workRequests.update(modal.id, body);
       }
 
-      // Send in-app notification to assigned person
-      if (body.assignedToName) {
+      // Send notification to assigned person
+      if (body.assignedToName && isNew) {
         const assignedUser = usersList.find(u => u.fullName === body.assignedToName);
         if (assignedUser) {
           try {
             await api.notifications.create({
               userId: assignedUser.id,
-              title: isNew ? 'New Work Request Assigned' : 'Work Request Updated',
-              message: `"${body.title}" has been ${isNew ? 'assigned to you' : 'updated'} — Priority: ${body.priority}`,
+              title: 'New Work Request Assigned',
+              message: `"${body.title}" has been assigned to you — Priority: ${body.priority}`,
               type: 'assignment',
               link: '/work-requests',
             });
@@ -136,10 +156,27 @@ export default function WorkRequests() {
         }
       }
 
+      // Send approval notifications to all managers and admins
+      if (isNew) {
+        const managers = usersList.filter(u => u.role && ['manager', 'admin'].includes(u.role.toLowerCase()));
+        for (const manager of managers) {
+          try {
+            await api.notifications.create({
+              userId: manager.id,
+              title: '🔔 New Work Request Pending Approval',
+              message: `"${body.title}" (${body.priority.toUpperCase()}) from ${body.requestedBy} is waiting for your approval. Location: ${body.location || 'N/A'}`,
+              type: 'approval',
+              link: '/work-requests',
+            });
+          } catch { /* non-blocking */ }
+        }
+        showToast(`Work request created successfully. Approval notifications sent to managers.`, 'success');
+      } else {
+        showToast('Work request updated successfully', 'success');
+      }
+
       setModal(null);
       await load();
-      const saveMsg = isNew ? 'Work request created' : 'Work request updated';
-      showToast(`${saveMsg} successfully`, 'success');
     } catch (err) {
       showToast('Failed to save work request: ' + err.message, 'error');
     } finally {
@@ -153,8 +190,14 @@ export default function WorkRequests() {
     load();
   }
 
-  /* ── Approve → Create Work Order ── */
+  /* ── Approve → Create Work Order ── (Manager/Admin Only) */
   async function approveToWorkOrder(request) {
+    // Check user role - only manager or admin can approve
+    if (!user?.profile?.role || !['manager', 'admin'].includes(user.profile.role.toLowerCase())) {
+      showToast('Only managers and admins can approve work requests', 'error');
+      return;
+    }
+
     if (!confirm(`Approve "${request.title}" and create a Work Order?`)) return;
     setSending(true);
     try {
@@ -171,8 +214,12 @@ export default function WorkRequests() {
       };
       const workOrder = await api.workOrders.create(woBody);
 
-      // 2. Update work request status to approved
-      await api.workRequests.update(request.id, { status: 'approved' });
+      // 2. Update work request status to approved (with role verification)
+      await api.workRequests.update(request.id, { 
+        status: 'approved',
+        approvedBy: user?.user_metadata?.full_name || user?.email || 'Unknown',
+        approvedAt: new Date().toISOString(),
+      });
 
       // Send in-app notification to assigned person
       if (request.assignedToName) {
@@ -197,6 +244,17 @@ export default function WorkRequests() {
     } finally {
       setSending(false);
     }
+  }
+
+  /* ── Photo Attachments ── */
+  function openPhotoModal(request) {
+    setPhotoModal(request);
+  }
+
+  function closePhotoModal() {
+    setPhotoModal(null);
+    // Reload attachment counts when modal closes
+    loadAttachmentCounts(items);
   }
 
   /* ── Work Permit ── */
@@ -265,124 +323,345 @@ export default function WorkRequests() {
   permits.forEach((p) => { requestPermitMap[p.workRequestId] = p; });
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1>📋 Work Requests</h1>
-          <div className="subtitle">Create requests, notify assigned personnel & generate work permits</div>
-        </div>
-        <div style={{ display: 'flex', gap: '.5rem' }}>
-          <button
-            className={`btn ${tab === 'requests' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setTab('requests')}
-          >
-            Requests
-          </button>
-          <button
-            className={`btn ${tab === 'permits' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setTab('permits')}
-          >
-            Permits
-          </button>
-          {tab === 'requests' && (
-            <button className="btn btn-primary" onClick={openNew}>+ New Request</button>
-          )}
+    <div style={{ background: '#0a0a0a', minHeight: '100vh', padding: '2rem' }}>
+      {/* Professional Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #004E89 0%, #1a5099 100%)',
+        color: '#FFFFFF',
+        padding: '2rem',
+        borderRadius: '8px',
+        marginBottom: '2rem',
+        boxShadow: '0 4px 12px rgba(255, 184, 28, 0.2)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2.2rem', fontWeight: '700', letterSpacing: '-0.5px' }}>
+              Work Requests
+            </h1>
+            <p style={{ margin: '0', fontSize: '0.95rem', opacity: 0.9, fontWeight: '300' }}>
+              Create, track, and approve maintenance work requests with integrated notifications
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button
+              className={`btn ${tab === 'requests' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTab('requests')}
+              style={{ fontWeight: '600' }}
+            >
+              Requests ({items.length})
+            </button>
+            <button
+              className={`btn ${tab === 'permits' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTab('permits')}
+              style={{ fontWeight: '600' }}
+            >
+              Permits ({permits.length})
+            </button>
+            {tab === 'requests' && (
+              <button className="btn btn-primary" onClick={openNew} style={{ fontWeight: '600' }}>
+                ➕ New Request
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ── Stats ── */}
-      <div className="stats-grid">
-        <div className="card stat-card">
-          <div className="stat-icon orange">📋</div>
-          <div className="stat-info">
-            <div className="value orange">{items.length}</div>
-            <div className="label">Total Requests</div>
-          </div>
+      {/* Stats Grid - Professional Design */}
+      <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+        <div style={{
+          background: '#1c1c1c',
+          borderRadius: '8px',
+          padding: '1.5rem',
+          boxShadow: '0 2px 8px rgba(255, 184, 28, 0.08), 0 0 15px rgba(255, 184, 28, 0.05)',
+          border: '1px solid #383838',
+          borderLeft: '4px solid #FFB81C'
+        }}>
+          <div style={{ fontSize: '0.75rem', color: '#A0A0A0', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Total Requests</div>
+          <div style={{ fontSize: '2.2rem', fontWeight: '700', color: '#FFB81C', textShadow: '0 0 10px rgba(255, 184, 28, 0.3)' }}>{items.length}</div>
         </div>
-        <div className="card stat-card">
-          <div className="stat-icon blue">⏳</div>
-          <div className="stat-info">
-            <div className="value blue">{items.filter((i) => i.status === 'pending').length}</div>
-            <div className="label">Pending</div>
-          </div>
+        <div style={{
+          background: '#1c1c1c',
+          borderRadius: '8px',
+          padding: '1.5rem',
+          boxShadow: '0 2px 8px rgba(255, 140, 0, 0.08), 0 0 15px rgba(255, 140, 0, 0.05)',
+          border: '1px solid #383838',
+          borderLeft: '4px solid #FF8C00'
+        }}>
+          <div style={{ fontSize: '0.75rem', color: '#A0A0A0', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Waiting for Approval</div>
+          <div style={{ fontSize: '2.2rem', fontWeight: '700', color: '#FF8C00', textShadow: '0 0 10px rgba(255, 140, 0, 0.3)' }}>{items.filter((i) => i.status === 'pending').length}</div>
         </div>
-        <div className="card stat-card">
-          <div className="stat-icon green">✅</div>
-          <div className="stat-info">
-            <div className="value green">{items.filter((i) => i.status === 'completed').length}</div>
-            <div className="label">Completed</div>
-          </div>
+        <div style={{
+          background: '#1c1c1c',
+          borderRadius: '8px',
+          padding: '1.5rem',
+          boxShadow: '0 2px 8px rgba(0, 255, 0, 0.08), 0 0 15px rgba(0, 255, 0, 0.05)',
+          border: '1px solid #383838',
+          borderLeft: '4px solid #00FF00'
+        }}>
+          <div style={{ fontSize: '0.75rem', color: '#A0A0A0', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Approved</div>
+          <div style={{ fontSize: '2.2rem', fontWeight: '700', color: '#00FF00', textShadow: '0 0 10px rgba(0, 255, 0, 0.3)' }}>{items.filter((i) => i.status === 'approved').length}</div>
         </div>
-        <div className="card stat-card">
-          <div className="stat-icon purple">📄</div>
-          <div className="stat-info">
-            <div className="value purple">{permits.length}</div>
-            <div className="label">Permits Issued</div>
-          </div>
+        <div style={{
+          background: '#1c1c1c',
+          borderRadius: '8px',
+          padding: '1.5rem',
+          boxShadow: '0 2px 8px rgba(0, 255, 0, 0.08), 0 0 15px rgba(0, 255, 0, 0.05)',
+          border: '1px solid #383838',
+          borderLeft: '4px solid #00FF00'
+        }}>
+          <div style={{ fontSize: '0.75rem', color: '#A0A0A0', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Completed</div>
+          <div style={{ fontSize: '2.2rem', fontWeight: '700', color: '#00FF00', textShadow: '0 0 10px rgba(0, 255, 0, 0.3)' }}>{items.filter((i) => i.status === 'completed').length}</div>
         </div>
       </div>
 
       {/* ── Requests Tab ── */}
       {tab === 'requests' && (
-        <div className="card">
+        <div style={{
+          background: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+          border: '1px solid #e0e0e0',
+          overflow: 'hidden'
+        }}>
           {loading ? (
-            <div className="loading">Loading...</div>
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>Loading...</div>
           ) : items.length === 0 ? (
-            <div className="empty">No work requests yet.</div>
+            <div style={{ padding: '3rem 2rem', textAlign: 'center', color: '#999' }}>
+              <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No work requests yet</div>
+              <div style={{ fontSize: '0.85rem', color: '#bbb' }}>Create your first work request to get started</div>
+            </div>
           ) : (
-            <table>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Type</th>
-                  <th>Asset</th>
-                  <th>KKS Code</th>
-                  <th>Assigned To</th>
-                  <th>Department</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Permit</th>
-                  <th>Actions</th>
+                <tr style={{ background: '#f9f9f9', borderBottom: '2px solid #e0e0e0' }}>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#004E89', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Title & Description</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#004E89', letterSpacing: '0.5px', textTransform: 'uppercase' }}>KKS Code</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#004E89', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Type</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#004E89', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Asset</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#004E89', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Priority</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#004E89', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#004E89', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Photos</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#004E89', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Assigned To</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#004E89', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((w) => (
-                  <tr key={w.id}>
-                    <td><strong>{w.title}</strong></td>
-                    <td><span className={`badge ${typeBadge[w.workType] || 'badge-gray'}`}>{w.workType}</span></td>
-                    <td>{w.assetId?.name || '—'}</td>
-                    <td>{w.kksCode || '—'}</td>
-                    <td>
-                      {w.assignedToName || '—'}
+                {items.map((w, idx) => (
+                  <tr key={w.id} style={{
+                    borderBottom: '1px solid #eee',
+                    background: idx % 2 === 0 ? '#fff' : '#fafafa',
+                    transition: 'background 0.2s'
+                  }}>
+                    {/* Title & Description */}
+                    <td style={{ padding: '1rem', color: '#004E89', fontWeight: '600', fontSize: '0.9rem', maxWidth: '250px' }}>
+                      <div style={{ marginBottom: '0.35rem' }}>{w.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#999', marginBottom: '0.35rem' }}>By: {w.requestedBy}</div>
+                      {w.description && (
+                        <div style={{ 
+                          fontSize: '0.8rem', 
+                          color: '#666', 
+                          fontStyle: 'italic',
+                          wordBreak: 'break-word',
+                          maxHeight: '60px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {w.description}
+                        </div>
+                      )}
                     </td>
-                    <td>{w.department || '—'}</td>
-                    <td><span className={`badge ${priorityBadge[w.priority]}`}>{w.priority}</span></td>
-                    <td><span className={`badge ${statusBadge[w.status]}`}>{w.status}</span></td>
-                    <td>
-                      {requestPermitMap[w.id] ? (
-                        <button className="btn btn-accent btn-sm" onClick={() => printWorkPermit(requestPermitMap[w.id], w)} title="Print permit">
-                          🖨️ {requestPermitMap[w.id].permitNumber}
+
+                    {/* KKS Code */}
+                    <td style={{ padding: '1rem', color: '#004E89', fontWeight: '700', fontSize: '0.85rem', fontFamily: 'monospace' }}>
+                      {w.kksCode || (w.assetId?.kksCode) || '—'}
+                    </td>
+
+                    {/* Type */}
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.35rem 0.7rem',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        background: w.workType === 'corrective' ? '#ffebee' : w.workType === 'preventive' ? '#e3f2fd' : w.workType === 'inspection' ? '#f3e5f5' : '#f5f5f5',
+                        color: w.workType === 'corrective' ? '#D41E3A' : w.workType === 'preventive' ? '#004E89' : w.workType === 'inspection' ? '#FFA500' : '#999999'
+                      }}>
+                        {w.workType}
+                      </span>
+                    </td>
+
+                    {/* Asset */}
+                    <td style={{ padding: '1rem', color: '#424242', fontSize: '0.9rem' }}>
+                      <div>{w.assetId?.name || '—'}</div>
+                      {w.location && <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.25rem' }}>📍 {w.location}</div>}
+                    </td>
+
+                    {/* Priority */}
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.35rem 0.7rem',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        background: w.priority === 'critical' ? '#ffe8eb' : w.priority === 'high' ? '#fff4e6' : w.priority === 'medium' ? '#e6f3ff' : '#f5f5f5',
+                        color: w.priority === 'critical' ? '#D41E3A' : w.priority === 'high' ? '#FFA500' : w.priority === 'medium' ? '#0099CC' : '#999999'
+                      }}>
+                        {w.priority.toUpperCase()}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.35rem 0.7rem',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        background: w.status === 'pending' ? '#fff3e0' : w.status === 'approved' ? '#e8f5e9' : w.status === 'in-progress' ? '#e1f5fe' : w.status === 'completed' ? '#e8f5e9' : w.status === 'rejected' ? '#ffecf0' : '#f5f5f5',
+                        color: w.status === 'pending' ? '#FFA500' : w.status === 'approved' ? '#00FF00' : w.status === 'in-progress' ? '#00BFFF' : w.status === 'completed' ? '#00FF00' : w.status === 'rejected' ? '#D41E3A' : '#999999'
+                      }}>
+                        {statusLabel[w.status]}
+                      </span>
+                    </td>
+
+                    {/* Photos/Attachments */}
+                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                      {attachmentCounts[w.id] ? (
+                        <button
+                          onClick={() => openPhotoModal(w)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.4rem 0.7rem',
+                            background: '#e3f2fd',
+                            border: '1px solid #0099CC',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '0.85rem',
+                            color: '#0099CC',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = '#e6f3ff';
+                            e.target.style.borderColor = '#1565c0';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = '#e3f2fd';
+                            e.target.style.borderColor = '#0099CC';
+                          }}
+                          title="Click to view/manage photos"
+                        >
+                          📷 {attachmentCounts[w.id]}
                         </button>
                       ) : (
-                        <button className="btn btn-secondary btn-sm" onClick={() => openPermitModal(w)}>
-                          + Permit
+                        <button
+                          onClick={() => openPhotoModal(w)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.4rem 0.7rem',
+                            background: '#f5f5f5',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '0.85rem',
+                            color: '#999',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = '#e0e0e0';
+                            e.target.style.borderColor = '#999';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = '#f5f5f5';
+                            e.target.style.borderColor = '#ccc';
+                          }}
+                          title="Click to add photos"
+                        >
+                          📷 Add
                         </button>
                       )}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {w.status === 'pending' && (
+
+                    {/* Assigned To */}
+                    <td style={{ padding: '1rem', color: '#424242', fontSize: '0.9rem' }}>{w.assignedToName || '—'}</td>
+
+                    {/* Actions */}
+                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                      <button
+                        onClick={() => openEdit(w)}
+                        style={{
+                          padding: '0.4rem 0.7rem',
+                          marginRight: '0.35rem',
+                          fontSize: '0.8rem',
+                          background: '#1e3a5f',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseOver={(e) => e.target.style.background = '#2d5a7b'}
+                        onMouseOut={(e) => e.target.style.background = '#1e3a5f'}
+                      >
+                        Edit
+                      </button>
+                      {w.status === 'pending' && user?.profile?.role && ['manager', 'admin'].includes(user.profile.role.toLowerCase()) && (
                         <button
                           className="btn btn-sm"
-                          style={{ background: 'var(--success)', color: '#fff', marginRight: '.35rem' }}
+                          style={{ 
+                            background: '#004E89', 
+                            color: '#fff', 
+                            marginRight: '.35rem',
+                            padding: '0.4rem 0.7rem',
+                            fontSize: '0.8rem',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            transition: 'background 0.2s'
+                          }}
                           onClick={() => approveToWorkOrder(w)}
                           disabled={sending}
-                          title="Approve and create Work Order"
+                          title="Approve and create Work Order (Manager/Admin only)"
+                          onMouseOver={(e) => !sending && (e.target.style.background = '#00897b')}
+                          onMouseOut={(e) => !sending && (e.target.style.background = '#004E89')}
                         >
-                          ✅ Approve → WO
+                          ✓ Approve
                         </button>
                       )}
-                      <button className="btn btn-secondary btn-sm" onClick={() => openEdit(w)}>Edit</button>{' '}
-                      <button className="btn btn-danger btn-sm" onClick={() => removeRequest(w.id)}>Delete</button>
+                      <button
+                        onClick={() => removeRequest(w.id)}
+                        style={{
+                          padding: '0.4rem 0.7rem',
+                          fontSize: '0.8rem',
+                          background: '#f5f5f5',
+                          color: '#D41E3A',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.background = '#ffebee';
+                          e.target.style.borderColor = '#ef5350';
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.background = '#f5f5f5';
+                          e.target.style.borderColor = '#e0e0e0';
+                        }}
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -394,37 +673,77 @@ export default function WorkRequests() {
 
       {/* ── Permits Tab ── */}
       {tab === 'permits' && (
-        <div className="card">
+        <div style={{
+          background: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+          border: '1px solid #e0e0e0',
+          overflow: 'hidden'
+        }}>
           {loading ? (
-            <div className="loading">Loading...</div>
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>Loading...</div>
           ) : permits.length === 0 ? (
-            <div className="empty">No work permits issued yet.</div>
+            <div style={{ padding: '3rem 2rem', textAlign: 'center', color: '#999' }}>
+              <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No work permits issued yet</div>
+              <div style={{ fontSize: '0.85rem', color: '#bbb' }}>Permits will appear here once they are generated</div>
+            </div>
           ) : (
-            <table>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>
-                  <th>Permit #</th>
-                  <th>Work Request</th>
-                  <th>Issued To</th>
-                  <th>Issued By</th>
-                  <th>Location</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                <tr style={{ background: '#f9f9f9', borderBottom: '2px solid #e0e0e0' }}>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#1e3a5f', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Permit Number</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#1e3a5f', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Work Request</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#1e3a5f', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Issued To</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#1e3a5f', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Location</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#1e3a5f', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: '700', color: '#1e3a5f', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {permits.map((p) => {
+                {permits.map((p, idx) => {
                   const req = items.find((r) => r.id === p.workRequestId);
                   return (
-                    <tr key={p.id}>
-                      <td><code>{p.permitNumber}</code></td>
-                      <td>{p.workRequestTitle || req?.title || '—'}</td>
-                      <td>{p.issuedTo || '—'}</td>
-                      <td>{p.issuedBy || '—'}</td>
-                      <td>{p.location || '—'}</td>
-                      <td><span className={`badge ${p.status === 'active' ? 'badge-green' : p.status === 'issued' ? 'badge-blue' : p.status === 'revoked' ? 'badge-red' : 'badge-gray'}`}>{p.status}</span></td>
-                      <td>
-                        <button className="btn btn-accent btn-sm" onClick={() => printWorkPermit(p, req)}>🖨️ Print</button>
+                    <tr key={p.id} style={{
+                      borderBottom: '1px solid #eee',
+                      background: idx % 2 === 0 ? '#fff' : '#fafafa',
+                      transition: 'background 0.2s'
+                    }}>
+                      <td style={{ padding: '1rem', color: '#1e3a5f', fontWeight: '600', fontSize: '0.9rem', fontFamily: 'monospace' }}>{p.permitNumber}</td>
+                      <td style={{ padding: '1rem', color: '#424242', fontSize: '0.9rem' }}>{p.workRequestTitle || req?.title || '—'}</td>
+                      <td style={{ padding: '1rem', color: '#424242', fontSize: '0.9rem' }}>{p.issuedTo || '—'}</td>
+                      <td style={{ padding: '1rem', color: '#424242', fontSize: '0.9rem' }}>{p.location || '—'}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '0.35rem 0.7rem',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          background: p.status === 'active' ? '#e8f5e9' : p.status === 'issued' ? '#e3f2fd' : p.status === 'revoked' ? '#ffcdd2' : '#f5f5f5',
+                          color: p.status === 'active' ? '#00796b' : p.status === 'issued' ? '#1976d2' : p.status === 'revoked' ? '#c62828' : '#616161'
+                        }}>
+                          {p.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                        <button 
+                          onClick={() => printWorkPermit(p, req)}
+                          style={{
+                            padding: '0.4rem 0.7rem',
+                            fontSize: '0.8rem',
+                            background: '#1e3a5f',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseOver={(e) => e.target.style.background = '#2d5a7b'}
+                          onMouseOut={(e) => e.target.style.background = '#1e3a5f'}
+                        >
+                          🖨️ Print
+                        </button>
                       </td>
                     </tr>
                   );
@@ -437,31 +756,93 @@ export default function WorkRequests() {
 
       {/* ── Work Request Modal ── */}
       {modal && (
-        <div className="modal-overlay" onClick={() => setModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>{modal === 'new' ? '📋 New Work Request' : '📋 Edit Work Request'}</h2>
-            <div className="form-group">
-              <label>Title *</label>
-              <input value={form.title} onChange={(e) => set('title', e.target.value)} />
+        <div style={{
+          position: 'fixed',
+          inset: '0',
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: '1000'
+        }} onClick={() => setModal(null)}>
+          <div style={{
+            background: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '85vh',
+            overflow: 'auto',
+            padding: '2rem',
+            animation: 'slideUp 0.3s ease'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{
+              fontSize: '1.4rem',
+              fontWeight: '700',
+              color: '#1e3a5f',
+              marginBottom: '1.5rem',
+              borderBottom: '2px solid #e0e0e0',
+              paddingBottom: '1rem'
+            }}>
+              {modal === 'new' ? '📋 New Work Request' : '📋 Edit Work Request'}
+            </h2>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Title *</label>
+              <input 
+                value={form.title} 
+                onChange={(e) => set('title', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box'
+                }}
+              />
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Work Type *</label>
-                <select value={form.workType} onChange={(e) => set('workType', e.target.value)}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Work Type *</label>
+                <select 
+                  value={form.workType} 
+                  onChange={(e) => set('workType', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                >
                   <option value="corrective">Corrective</option>
                   <option value="preventive">Preventive</option>
                   <option value="inspection">Inspection</option>
                   <option value="emergency">Emergency</option>
                 </select>
               </div>
-              <div className="form-group">
-                <label>Asset *</label>
-                <select value={form.assetId} onChange={(e) => {
-                  const selectedId = e.target.value;
-                  set('assetId', selectedId);
-                  const selected = assets.find(a => a.id === selectedId);
-                  if (selected?.kksCode) set('kksCode', selected.kksCode);
-                }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Asset *</label>
+                <select 
+                  value={form.assetId} 
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    set('assetId', selectedId);
+                    const selected = assets.find(a => a.id === selectedId);
+                    if (selected?.kksCode) set('kksCode', selected.kksCode);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                >
                   <option value="">Select asset...</option>
                   {assets.length === 0 && <option disabled>No assets found</option>}
                   {assets.map((a) => (
@@ -472,13 +853,38 @@ export default function WorkRequests() {
                 </select>
               </div>
             </div>
-            <div className="form-group">
-              <label>KKS Code</label>
-              <input value={form.kksCode} onChange={(e) => set('kksCode', e.target.value)} placeholder="Auto-filled from asset" />
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>KKS Code</label>
+              <input 
+                value={form.kksCode} 
+                onChange={(e) => set('kksCode', e.target.value)}
+                placeholder="Auto-filled from asset"
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box'
+                }}
+              />
             </div>
-            <div className="form-group">
-              <label>Assign To</label>
-              <select value={form.assignedToName} onChange={(e) => set('assignedToName', e.target.value)}>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Assign To</label>
+              <select 
+                value={form.assignedToName} 
+                onChange={(e) => set('assignedToName', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box'
+                }}
+              >
                 <option value="">Select user...</option>
                 {usersList.map((u) => (
                   <option key={u.id} value={u.fullName}>
@@ -487,20 +893,43 @@ export default function WorkRequests() {
                 ))}
               </select>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Priority</label>
-                <select value={form.priority} onChange={(e) => set('priority', e.target.value)}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Priority</label>
+                <select 
+                  value={form.priority} 
+                  onChange={(e) => set('priority', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
                   <option value="critical">Critical</option>
                 </select>
               </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select value={form.status} onChange={(e) => set('status', e.target.value)}>
-                  <option value="pending">Pending</option>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Status</label>
+                <select 
+                  value={form.status} 
+                  onChange={(e) => set('status', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="pending">Waiting for Approval</option>
                   <option value="approved">Approved</option>
                   <option value="in-progress">In Progress</option>
                   <option value="completed">Completed</option>
@@ -509,39 +938,181 @@ export default function WorkRequests() {
                 </select>
               </div>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Location</label>
-                <input value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Building A, Floor 2" />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Location</label>
+                <input 
+                  value={form.location} 
+                  onChange={(e) => set('location', e.target.value)}
+                  placeholder="Building A, Floor 2"
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
-              <div className="form-group">
-                <label>Scheduled Date</label>
-                <input type="date" value={form.scheduledDate} onChange={(e) => set('scheduledDate', e.target.value)} />
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Scheduled Date</label>
+                <input 
+                  type="date"
+                  value={form.scheduledDate} 
+                  onChange={(e) => set('scheduledDate', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Requested By</label>
-                <input value={form.requestedBy} onChange={(e) => set('requestedBy', e.target.value)} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Requested By</label>
+                <input 
+                  value={form.requestedBy} 
+                  onChange={(e) => set('requestedBy', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
-              <div className="form-group">
-                <label>Department</label>
-                <input value={form.department} onChange={(e) => set('department', e.target.value)} placeholder="e.g. Mechanical, Electrical, Operations" />
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Department</label>
+                <input 
+                  value={form.department} 
+                  onChange={(e) => set('department', e.target.value)}
+                  placeholder="e.g. Mechanical, Electrical, Operations"
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
             </div>
-            <div className="form-group">
-              <label>Description</label>
-              <textarea value={form.description} onChange={(e) => set('description', e.target.value)} />
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Description</label>
+              <textarea 
+                value={form.description} 
+                onChange={(e) => set('description', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                  minHeight: '100px',
+                  fontFamily: 'inherit'
+                }}
+              />
             </div>
-            <div className="form-group">
-              <label>Notes</label>
-              <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} rows={2} />
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Notes</label>
+              <textarea 
+                value={form.notes} 
+                onChange={(e) => set('notes', e.target.value)}
+                rows={2}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit'
+                }}
+              />
             </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={saveRequest} disabled={sending || !form.title || !form.assetId}>
-                {sending ? 'Saving...' : 'Save & Notify'}
+
+            <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e0e0e0', paddingTop: '1.5rem' }}>
+              <button 
+                onClick={() => setModal(null)}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  fontSize: '0.9rem',
+                  background: '#f5f5f5',
+                  color: '#424242',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={(e) => e.target.style.background = '#e0e0e0'}
+                onMouseOut={(e) => e.target.style.background = '#f5f5f5'}
+              >
+                Cancel
               </button>
+              <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                {modal !== 'new' && modal?.id && (
+                  <button 
+                    onClick={() => openPhotoModal(modal)}
+                    title="Attach photos or capture from camera"
+                    style={{
+                      padding: '0.6rem 1.2rem',
+                      fontSize: '0.9rem',
+                      background: '#1976d2',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={(e) => e.target.style.background = '#1565c0'}
+                    onMouseOut={(e) => e.target.style.background = '#1976d2'}
+                  >
+                    📷 Photos/Camera {attachmentCounts[modal.id] ? `(${attachmentCounts[modal.id]})` : ''}
+                  </button>
+                )}
+                <button 
+                  onClick={saveRequest} 
+                  disabled={sending || !form.title || !form.assetId}
+                  style={{
+                    padding: '0.6rem 1.2rem',
+                    fontSize: '0.9rem',
+                    background: sending || !form.title || !form.assetId ? '#ccc' : '#1e3a5f',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: sending || !form.title || !form.assetId ? 'not-allowed' : 'pointer',
+                    fontWeight: '600',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!sending && form.title && form.assetId) {
+                      e.target.style.background = '#2d5a7b';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (!sending && form.title && form.assetId) {
+                      e.target.style.background = '#1e3a5f';
+                    }
+                  }}
+                >
+                  {sending ? 'Saving...' : 'Save & Notify'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -549,66 +1120,198 @@ export default function WorkRequests() {
 
       {/* ── Work Permit Modal ── */}
       {permitModal && (
-        <div className="modal-overlay" onClick={() => setPermitModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>📄 Generate Work Permit</h2>
-            <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              For: <strong>{permitModal.title}</strong>
+        <div style={{
+          position: 'fixed',
+          inset: '0',
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: '1000'
+        }} onClick={() => setPermitModal(null)}>
+          <div style={{
+            background: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '85vh',
+            overflow: 'auto',
+            padding: '2rem',
+            animation: 'slideUp 0.3s ease'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{
+              fontSize: '1.4rem',
+              fontWeight: '700',
+              color: '#1e3a5f',
+              marginBottom: '0.5rem',
+              borderBottom: '2px solid #e0e0e0',
+              paddingBottom: '1rem'
+            }}>
+              📄 Generate Work Permit
+            </h2>
+            <p style={{ fontSize: '0.85rem', color: '#616161', marginBottom: '1.5rem' }}>
+              For: <strong style={{ color: '#1e3a5f' }}>{permitModal.title}</strong>
             </p>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Issued To</label>
-                <input value={permitForm.issuedTo} onChange={(e) => setP('issuedTo', e.target.value)} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Issued To</label>
+                <input 
+                  value={permitForm.issuedTo} 
+                  onChange={(e) => setP('issuedTo', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
-              <div className="form-group">
-                <label>Issued By</label>
-                <input value={permitForm.issuedBy} onChange={(e) => setP('issuedBy', e.target.value)} />
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Issued By</label>
+                <input 
+                  value={permitForm.issuedBy} 
+                  onChange={(e) => setP('issuedBy', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Start Date</label>
-                <input type="date" value={permitForm.startDate} onChange={(e) => setP('startDate', e.target.value)} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Start Date</label>
+                <input 
+                  type="date"
+                  value={permitForm.startDate} 
+                  onChange={(e) => setP('startDate', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
-              <div className="form-group">
-                <label>End Date</label>
-                <input type="date" value={permitForm.endDate} onChange={(e) => setP('endDate', e.target.value)} />
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>End Date</label>
+                <input 
+                  type="date"
+                  value={permitForm.endDate} 
+                  onChange={(e) => setP('endDate', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 0.8rem',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
             </div>
-            <div className="form-group">
-              <label>Location</label>
-              <input value={permitForm.location} onChange={(e) => setP('location', e.target.value)} />
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Location</label>
+              <input 
+                value={permitForm.location} 
+                onChange={(e) => setP('location', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box'
+                }}
+              />
             </div>
-            <div className="form-group">
-              <label>Work Description</label>
-              <textarea value={permitForm.workDescription} onChange={(e) => setP('workDescription', e.target.value)} />
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Work Description</label>
+              <textarea 
+                value={permitForm.workDescription} 
+                onChange={(e) => setP('workDescription', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                  minHeight: '80px',
+                  fontFamily: 'inherit'
+                }}
+              />
             </div>
-            <div className="form-group">
-              <label>Hazards</label>
-              <textarea value={permitForm.hazards} onChange={(e) => setP('hazards', e.target.value)} rows={2} placeholder="Describe potential hazards..." />
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Hazards</label>
+              <textarea 
+                value={permitForm.hazards} 
+                onChange={(e) => setP('hazards', e.target.value)}
+                rows={2}
+                placeholder="Describe potential hazards..."
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit'
+                }}
+              />
             </div>
-            <div className="form-group">
-              <label>Safety Precautions</label>
-              <textarea value={permitForm.safetyPrecautions} onChange={(e) => setP('safetyPrecautions', e.target.value)} rows={2} />
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Safety Precautions</label>
+              <textarea 
+                value={permitForm.safetyPrecautions} 
+                onChange={(e) => setP('safetyPrecautions', e.target.value)}
+                rows={2}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit'
+                }}
+              />
             </div>
-            <div className="form-group">
-              <label>PPE Required</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem', marginTop: '.35rem' }}>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.6rem', fontSize: '0.9rem' }}>PPE Required</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {PPE_OPTIONS.map((ppe) => (
                   <label
                     key={ppe}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '.35rem',
-                      padding: '.3rem .7rem',
-                      borderRadius: '999px',
-                      fontSize: '.78rem',
-                      fontWeight: 600,
+                      gap: '0.35rem',
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '4px',
+                      fontSize: '0.85rem',
+                      fontWeight: '600',
                       cursor: 'pointer',
-                      border: '1px solid var(--border)',
-                      background: permitForm.ppeRequired.includes(ppe) ? 'rgba(249,115,22,.15)' : 'transparent',
-                      color: permitForm.ppeRequired.includes(ppe) ? 'var(--primary)' : 'var(--text-muted)',
+                      border: '1px solid ' + (permitForm.ppeRequired.includes(ppe) ? '#f57c00' : '#d0d0d0'),
+                      background: permitForm.ppeRequired.includes(ppe) ? '#fff3e0' : 'transparent',
+                      color: permitForm.ppeRequired.includes(ppe) ? '#e65100' : '#616161',
+                      transition: 'all 0.2s'
                     }}
                   >
                     <input
@@ -617,23 +1320,78 @@ export default function WorkRequests() {
                       onChange={() => handlePpeToggle(ppe)}
                       style={{ display: 'none' }}
                     />
-                    {ppe}
+                    ✓ {ppe}
                   </label>
                 ))}
               </div>
             </div>
-            <div className="form-group">
-              <label>Approved By</label>
-              <input value={permitForm.approvedBy} onChange={(e) => setP('approvedBy', e.target.value)} />
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', color: '#1e3a5f', marginBottom: '0.4rem', fontSize: '0.9rem' }}>Approved By</label>
+              <input 
+                value={permitForm.approvedBy} 
+                onChange={(e) => setP('approvedBy', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.8rem',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  fontSize: '0.9rem',
+                  boxSizing: 'border-box'
+                }}
+              />
             </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setPermitModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={savePermit} disabled={sending}>
+
+            <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'flex-end', borderTop: '1px solid #e0e0e0', paddingTop: '1.5rem' }}>
+              <button 
+                onClick={() => setPermitModal(null)}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  fontSize: '0.9rem',
+                  background: '#f5f5f5',
+                  color: '#424242',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={(e) => e.target.style.background = '#e0e0e0'}
+                onMouseOut={(e) => e.target.style.background = '#f5f5f5'}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={savePermit} 
+                disabled={sending}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  fontSize: '0.9rem',
+                  background: sending ? '#ccc' : '#00796b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: sending ? 'not-allowed' : 'pointer',
+                  fontWeight: '600',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  if (!sending) e.target.style.background = '#00695c';
+                }}
+                onMouseOut={(e) => {
+                  if (!sending) e.target.style.background = '#00796b';
+                }}
+              >
                 {sending ? 'Generating...' : '📄 Generate & Print Permit'}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Photo Attachments Modal ── */}
+      {photoModal && (
+        <PhotoAttachments workRequestId={photoModal.id} onClose={closePhotoModal} />
       )}
 
       {/* ── Toast Notification ── */}
@@ -643,20 +1401,23 @@ export default function WorkRequests() {
             position: 'fixed',
             bottom: '1.5rem',
             right: '1.5rem',
-            padding: '.85rem 1.5rem',
-            borderRadius: 'var(--radius)',
-            background: toast.type === 'error' ? 'var(--danger)' : 'var(--success)',
-            color: '#fff',
-            fontSize: '.9rem',
-            fontWeight: 600,
-            boxShadow: '0 4px 20px rgba(0,0,0,.3)',
-            zIndex: 200,
+            padding: '1rem 1.5rem',
+            borderRadius: '8px',
+            background: toast.type === 'error' ? '#ffcdd2' : '#e8f5e9',
+            color: toast.type === 'error' ? '#c62828' : '#00796b',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            border: `1px solid ${toast.type === 'error' ? '#ef5350' : '#81c784'}`,
+            borderLeft: `4px solid ${toast.type === 'error' ? '#c62828' : '#00796b'}`,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            zIndex: '200',
             maxWidth: '420px',
-            animation: 'fadeIn .3s ease',
+            animation: 'slideIn 0.3s ease-out',
+            cursor: 'pointer'
           }}
           onClick={() => setToast(null)}
         >
-          {toast.type === 'error' ? '❌ ' : '✅ '}{toast.msg}
+          <div>{toast.type === 'error' ? '❌' : '✅'} {toast.msg}</div>
         </div>
       )}
     </div>

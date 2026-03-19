@@ -54,6 +54,7 @@ const snakeToMap = {
   safety_precautions: 'safetyPrecautions',
   ppe_required: 'ppeRequired',
   approved_by: 'approvedBy',
+  approved_at: 'approvedAt',
   full_name: 'fullName',
   user_id: 'userId',
   tag_name: 'tagName',
@@ -619,14 +620,56 @@ const generationUnitsApi = {
   },
 };
 
+/* ─── Work Request Attachments ─── */
+const workRequestAttachmentsApi = {
+  async list(workRequestId, limit = 100) {
+    const { data, error } = await supabase
+      .from('work_request_attachments')
+      .select('*')
+      .eq('work_request_id', workRequestId)
+      .order('uploaded_at', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return { data: data.map(toCamel), total: data.length };
+  },
+
+  async create(body) {
+    const { data, error } = await supabase
+      .from('work_request_attachments')
+      .insert(toSnake(body))
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return toCamel(data);
+  },
+
+  async delete(id) {
+    const { error } = await supabase
+      .from('work_request_attachments')
+      .delete()
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async update(id, body) {
+    const { data, error } = await supabase
+      .from('work_request_attachments')
+      .update(toSnake(body))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return toCamel(data);
+  },
+};
+
 /* ─── Exported API object ─── */
 export const api = {
   assets: assetsApi,
   workOrders: workOrdersApi,
   workRequests: workRequestsApi,
   workPermits: workPermitsApi,
-  inventory: tableApi('inventory_items'),
-  vendors: tableApi('vendors'),
+  workRequestAttachments: workRequestAttachmentsApi,
   reports: tableApi('maintenance_reports'),
   profiles: profilesApi,
   notifications: notificationsApi,

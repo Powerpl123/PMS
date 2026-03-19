@@ -21,8 +21,6 @@ const powerLinks = [
 ];
 
 const operationLinks = [
-  { to: '/inventory', label: 'Spare Parts', icon: '📦' },
-  { to: '/vendors', label: 'Suppliers', icon: '🤝' },
   { to: '/sensor-config', label: 'Sensor Tags', icon: '🔗' },
 ];
 
@@ -73,12 +71,6 @@ export default function Layout() {
           {user && (
             <div className="sidebar-user">
               <NotificationBell />
-              <img
-                src={user.user_metadata?.avatar_url || ''}
-                alt=""
-                className="user-avatar"
-                referrerPolicy="no-referrer"
-              />
               <span className="user-name">
                 {user.user_metadata?.full_name || user.email}
               </span>

@@ -244,7 +244,7 @@ export default function EnergyEfficiency() {
           <div className="stat-info"><div className="value blue">{avgEfficiency}{avgEfficiency !== '—' && '%'}</div><div className="label">Avg Efficiency</div></div>
         </div>
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: parseFloat(idleCapacity) > 30 ? 'rgba(239,68,68,.15)' : 'rgba(34,197,94,.15)' }}>
+          <div className="stat-icon" style={{ background: parseFloat(idleCapacity) > 30 ? 'rgba(255,85,0,.15)' : 'rgba(0,255,0,.15)' }}>
             {parseFloat(idleCapacity) > 30 ? '⚠️' : '✅'}
           </div>
           <div className="stat-info">

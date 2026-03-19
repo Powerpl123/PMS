@@ -188,7 +188,7 @@ export default function BlackoutPrevention() {
           <div className="stat-info"><div className="value green">{healthyCount}</div><div className="label">Healthy Zones</div></div>
         </div>
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: faultedCount > 0 ? 'rgba(239,68,68,.15)' : 'rgba(34,197,94,.15)' }}>
+          <div className="stat-icon" style={{ background: faultedCount > 0 ? 'rgba(255,85,0,.15)' : 'rgba(0,255,0,.15)' }}>
             {faultedCount > 0 ? '🚨' : '✅'}
           </div>
           <div className="stat-info">

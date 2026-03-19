@@ -22,13 +22,7 @@ const workOrderSchema = new mongoose.Schema(
     laborHours: { type: Number, min: 0, default: 0 },
     estimatedCost: { type: Number, min: 0, default: 0 },
     actualCost: { type: Number, min: 0, default: 0 },
-    attachments: [{ type: String, trim: true }],
-    partsUsed: [
-      {
-        itemId: { type: mongoose.Schema.Types.ObjectId, ref: "InventoryItem" },
-        quantity: { type: Number, min: 1, default: 1 }
-      }
-    ]
+    attachments: [{ type: String, trim: true }]
   },
   { timestamps: true }
 );
