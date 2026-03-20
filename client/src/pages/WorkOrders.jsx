@@ -9,17 +9,25 @@ export default function WorkOrders() {
   const [items, setItems] = useState([]);
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(empty);
 
-  const load = () => Promise.all([
-    api.workOrders.list(100).catch(() => ({ data: [] })),
-    api.assets.listAll().catch(() => ({ data: [] })),
-  ]).then(([wo, a]) => { setItems(wo.data); setAssets(a.data); setLoading(false); });
+  const load = () => {
+    setLoading(true);
+    api.workOrders.list(100).catch(() => ({ data: [] }))
+      .then(wo => { setItems(wo.data); setLoading(false); });
+  };
+
+  const loadAssets = () => {
+    if (assetsLoaded) return;
+    api.assets.listAll().catch(() => ({ data: [] }))
+      .then(a => { setAssets(a.data); setAssetsLoaded(true); });
+  };
 
   useEffect(() => { load(); }, []);
 
-  function openNew() { setForm(empty); setModal('new'); }
+  function openNew() { setForm(empty); loadAssets(); setModal('new'); }
   function openEdit(item) {
     setForm({
       title: item.title, description: item.description || '',
@@ -28,6 +36,7 @@ export default function WorkOrders() {
       dueDate: item.dueDate ? item.dueDate.slice(0, 10) : '',
       laborHours: item.laborHours || '', estimatedCost: item.estimatedCost || '',
     });
+    loadAssets();
     setModal(item);
   }
 
@@ -50,12 +59,12 @@ export default function WorkOrders() {
 
   return (
     <div>
-      <div className="page-header">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <div>
-          <h1>Work Orders</h1>
-          <div className="subtitle">Maintenance scheduling & tracking</div>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, lineHeight: 1.2 }}>Work Orders</h1>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Maintenance scheduling & tracking</span>
         </div>
-        <button className="btn btn-primary" onClick={openNew}>+ New Work Order</button>
+        <button className="btn btn-primary btn-sm" onClick={openNew}>+ New Work Order</button>
       </div>
 
       {/* Stats Summary */}

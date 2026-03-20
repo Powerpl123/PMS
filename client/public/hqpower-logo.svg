@@ -1,31 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <!-- Sun rays -->
-  <g transform="translate(100,85)">
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(20)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(40)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(60)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(80)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(100)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(120)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(140)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(160)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(180)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(200)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(220)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(240)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(260)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(280)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(300)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(320)"/>
-    <polygon points="0,-80 8,-30 -8,-30" fill="#FFD700" transform="rotate(340)"/>
+  <!-- Sun rays - sharp triangular spikes radiating outward -->
+  <g transform="translate(100,90)">
+    <!-- Major rays (longer) -->
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(24)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(48)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(72)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(96)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(120)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(144)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(168)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(192)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(216)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(240)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(264)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(288)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(312)"/>
+    <polygon points="0,-85 6,-28 -6,-28" fill="#FFD700" transform="rotate(336)"/>
+    <!-- Minor rays (shorter, between major ones) -->
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(12)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(36)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(60)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(84)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(108)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(132)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(156)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(180)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(204)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(228)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(252)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(276)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(300)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(324)"/>
+    <polygon points="0,-65 4,-30 -4,-30" fill="#FFC107" transform="rotate(348)"/>
   </g>
-  <!-- Blue dome -->
-  <path d="M 40,120 A 60,60 0 0,1 160,120 Z" fill="#2E86C1"/>
-  <!-- Green house / HQ shape -->
-  <polygon points="100,95 55,130 65,130 65,165 135,165 135,130 145,130" fill="#1B8A2A"/>
+  <!-- Blue dome/arc - prominent semicircle -->
+  <path d="M 35,120 A 65,65 0 0,1 165,120 Z" fill="#2196F3"/>
+  <!-- Lighter blue inner highlight -->
+  <path d="M 50,120 A 50,50 0 0,1 150,120 Z" fill="#42A5F5"/>
+  <!-- Green house shape -->
+  <polygon points="100,88 50,130 62,130 62,168 138,168 138,130 150,130" fill="#1B8A2A"/>
+  <!-- House door -->
+  <rect x="88" y="140" width="24" height="28" rx="2" fill="#15701F"/>
   <!-- HQ text -->
-  <text x="100" y="152" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="bold" fill="white">HQ</text>
+  <text x="100" y="135" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="900" fill="white" letter-spacing="1">HQ</text>
   <!-- POWER text -->
-  <text x="100" y="185" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="bold" fill="#1B8A2A" letter-spacing="3">POWER</text>
+  <text x="100" y="190" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="800" fill="#1B8A2A" letter-spacing="4">POWER</text>
 </svg>
